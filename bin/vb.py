@@ -117,32 +117,37 @@ class VariationalBayesGenotyper(object):
         return np.vstack((log_sum_exp(self.log_Z_0, axis=1),
                           log_sum_exp(self.log_Z_1.reshape(self.N, self.K * self.K), axis=1)))
     
-    def fit(self, convergence_tolerance=1e-6, num_iters=100):
+    def fit(self, convergence_tolerance=1e-6, debug=False, num_iters=100):
         for i in range(num_iters):
 
             self._update_Z()
             
-            print 'a', self._diff_lower_bound()
+            if debug:
+                print 'a', self._diff_lower_bound()
 
             self._update_G()
-       
-            print 'c', self._diff_lower_bound()
+            
+            if debug:
+                print 'c', self._diff_lower_bound()
             
             self._update_gamma()
             
-            print 'd', self._diff_lower_bound()
+            if debug:
+                print 'd', self._diff_lower_bound()
             
             self._update_kappa()
             
-            print 'e', self._diff_lower_bound()
+            if debug:
+                print 'e', self._diff_lower_bound()
             
             self._update_alpha()
-   
-            print 'f', self._diff_lower_bound()
-
-            print self.alpha
-               
-            print sum((self.kappa / self.kappa.sum()) > 1e-2)
+            
+            if debug:
+                print 'f', self._diff_lower_bound()
+    
+                print self.alpha
+                   
+                print sum((self.kappa / self.kappa.sum()) > 1e-2)
 
             
             self.lower_bound.append(self._compute_lower_bound())
@@ -160,8 +165,11 @@ class VariationalBayesGenotyper(object):
             
             elif diff < 0:
                 print 'Lower bound decreased'
-#                 raise Exception('Lower bound decreased')
-            
+                
+                if not debug:
+                    self.converged = False
+                    
+                    break            
             
     def _update_G(self):
         # TxNxKxM
@@ -520,12 +528,12 @@ if __name__ == '__main__':
     
     kappa_prior = np.ones(K) * 1e-3
     
-    alpha_prior = np.array([1, 1])
-    
-    
-    gamma_prior = np.array([[1, 1, 1],
-                            [1, 1, 1],
-                            [1, 1, 1]])
+#     alpha_prior = np.array([9, 1])
+#     
+#     
+#     gamma_prior = np.array([[, 1, 1],
+#                             [1, 1, 1],
+#                             [1, 1, 1]])
          
     
     model = VariationalBayesGenotyper(alpha_prior, gamma_prior, kappa_prior, G_prior, state_map, X)
