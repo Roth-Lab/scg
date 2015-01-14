@@ -305,15 +305,15 @@ class VariationalBayesGenotyper(object):
         return self._compute_e_log_p() - self._compute_e_log_q()
     
     def _compute_e_log_p(self):
-        alpha_prior = compute_log_p_dirichlet(self.alpha, self.alpha_prior)
+        alpha_prior = compute_e_log_p_dirichlet(self.alpha, self.alpha_prior)
         
         alpha_posterior = self._compute_e_log_p_alpha_posterior()
-        
-        gamma_prior = compute_log_p_dirichlet(self.gamma, self.gamma_prior)
-        
+
+        gamma_prior = sum([compute_e_log_p_dirichlet(x, y) for x, y in zip(self.gamma, self.gamma_prior)])
+
         gamma_posterior = self._compute_e_log_p_gamma_posterior()
         
-        kappa_prior = compute_log_p_dirichlet(self.kappa, self.kappa_prior)
+        kappa_prior = compute_e_log_p_dirichlet(self.kappa, self.kappa_prior)
         
         kappa_posterior = self._compute_e_log_p_kappa_posterior()
         
@@ -340,15 +340,15 @@ class VariationalBayesGenotyper(object):
         return np.sum(self.G_prior * self.G.sum(axis=(1, 2)))
             
     def _compute_e_log_q(self):
-        log_q_d = compute_dirichlet_entropy(self.alpha)
+        log_q_d = compute_e_log_q_dirichlet(self.alpha)
         
-        log_q_epsilon = sum([compute_dirichlet_entropy(x) for x in self.gamma])
+        log_q_epsilon = sum([compute_e_log_q_dirichlet(x) for x in self.gamma])
       
-        log_q_pi = compute_dirichlet_entropy(self.kappa)
+        log_q_pi = compute_e_log_q_dirichlet(self.kappa)
 
-        log_q_g = compute_discrete_entropy(self.log_G)
+        log_q_g = compute_e_log_q_discrete(self.log_G)
         
-        log_q_z = compute_discrete_entropy(self.log_Z)
+        log_q_z = compute_e_log_q_discrete(self.log_Z)
 
         return np.sum([log_q_d,
                        log_q_epsilon,
@@ -380,9 +380,8 @@ class VariationalBayesGenotyper(object):
     
     def _get_alpha_data_term(self):
         return np.exp(log_sum_exp(self.log_Y, axis=1))
- 
-    
-    def _get_gamma_data_term(self):
+     
+    def  _get_gamma_data_term(self):
         # SxNxKxM
         singlet_term = np.exp(self.log_Z_0[np.newaxis, :, :, np.newaxis] + self.log_G[:, np.newaxis, :, :])
         
@@ -416,16 +415,11 @@ class VariationalBayesGenotyper(object):
         return data_term.sum(axis=(2, 3, 4))     
     
     def _get_kappa_data_term(self):
-        # K
-        singlet_term = log_sum_exp(self.log_Z_0, axis=0)
-            
-        # K
-#         doublet_term = self.Z_1.sum(axis=(0, 1)) + self.Z_1.sum(axis=(0, 2))
-        
-        doublet_term = np.log(2) + log_sum_exp(self.log_Z_1.reshape((self.N * self.K, self.K)), axis=0)
+        singlet_term = self.Z_0.sum(axis=0)
  
-        # K
-        return np.exp(np.logaddexp(singlet_term, doublet_term))
+        doublet_term = self.Z_1.sum(axis=(0, 1)) + self.Z_1.sum(axis=(0, 2))
+
+        return singlet_term + doublet_term
 
     def _diff_lower_bound(self):
         self._debug_lower_bound.append(self._compute_lower_bound())
@@ -453,33 +447,25 @@ def get_indicator_matrix(states, X):
     
     return Y
 
-def compute_log_p_dirichlet(posterior, prior):
-    posterior = np.atleast_2d(posterior)
-    
-    prior = np.atleast_2d(prior)
-    
-    log_p = log_gamma(prior.sum(axis=1)) - \
-            log_gamma(prior).sum(axis=1) + \
-            safe_multiply(prior - 1, compute_e_log_dirichlet(posterior)).sum(axis=1)
-    
-    return log_p.sum()
+def compute_e_log_p_dirichlet(posterior, prior):
+    log_p = log_gamma(prior.sum()) - \
+            log_gamma(prior).sum() + \
+            safe_multiply(prior - 1, compute_e_log_dirichlet(posterior)).sum()
+ 
+    return log_p
 
-def compute_dirichlet_entropy(x):
+def compute_e_log_q_dirichlet(x):
     a_0 = x.sum()
        
     K = len(x)
+ 
+    return log_gamma(a_0) - log_gamma(x).sum() + safe_multiply(x - 1, psi(x)).sum() - safe_multiply(a_0 - K, psi(a_0))
 
-    return log_gamma(x).sum() - log_gamma(a_0) + safe_multiply(a_0 - K, psi(a_0)) - safe_multiply(x - 1, psi(x)).sum()
-
-def compute_discrete_entropy(log_x):
+def compute_e_log_q_discrete(log_x):
     return np.sum(safe_multiply(np.exp(log_x), log_x))
-
-# def compute_discrete_entropy(log_x):
-#     return np.exp(log_sum_exp(log_x + np.log(log_x)))
 
 def safe_multiply(x, y):
     return np.sign(x) * np.sign(y) * np.exp(np.log(np.abs(x)) + np.log(np.abs(y)))
-
 
 if __name__ == '__main__':
     from sklearn.metrics import v_measure_score
@@ -496,7 +482,7 @@ if __name__ == '__main__':
     
     M = 48
     
-    N = 400
+    N = 50
     
     K_true = 9
     
@@ -534,7 +520,13 @@ if __name__ == '__main__':
     
     kappa_prior = np.ones(K) * 1e-3
     
-    alpha_prior = np.array([9, 1])
+    alpha_prior = np.array([1, 1])
+    
+    
+    gamma_prior = np.array([[1, 1, 1],
+                            [1, 1, 1],
+                            [1, 1, 1]])
+         
     
     model = VariationalBayesGenotyper(alpha_prior, gamma_prior, kappa_prior, G_prior, state_map, X)
     
