@@ -403,7 +403,7 @@ class VariationalBayesGenotyper(object):
                 if u != v:
                     continue
                 
-                doublet_same_term[s, :, :] = self.G[u, :, :]
+                doublet_same_term[s, :, :] += self.G[u, :, :]
         
         doublet_same_term = safe_multiply(doublet_same_term[:, np.newaxis, :, :], self.Z_1_k_k[np.newaxis, :, :, np.newaxis])
 
