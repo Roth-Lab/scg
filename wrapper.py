@@ -112,7 +112,7 @@ def copy_best_run(in_file, out_dir):
     
     best_run_dir = os.path.join(args.tmp_dir, 'runs', best_run_id)
     
-    shutil.copy(best_run_dir, out_dir)
+    shutil.copytree(best_run_dir, out_dir)
 
 #=======================================================================================================================
 # Run Pipeline
