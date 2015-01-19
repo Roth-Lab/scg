@@ -81,7 +81,7 @@ def run_analysis(in_file, out_files, out_dir, seed):
                 '--convergence_tolerance', 0.001
                 ]
     
-    run_cmd(cmd, cmd_args)
+    run_cmd(cmd, cmd_args, mem=8, max_mem=8)
     
 @collate(run_analysis, formatter('params.yaml'), '{subpath[0][1]}/best_run.txt')
 def find_best_run(in_files, out_file):
