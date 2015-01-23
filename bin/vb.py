@@ -137,7 +137,7 @@ class VariationalBayesGenotyper(object):
         return np.vstack((log_sum_exp(self.log_Z_0, axis=1),
                           log_sum_exp(self.log_Z_1.reshape(self.N, self.K * self.K), axis=1)))
     
-    def fit(self, convergence_tolerance=1e-6, debug=False, num_iters=100):
+    def fit(self, convergence_tolerance=1e-4, debug=False, num_iters=100):
         for i in range(num_iters):
 
             self._update_Z()
@@ -172,7 +172,7 @@ class VariationalBayesGenotyper(object):
             
             self.lower_bound.append(self._compute_lower_bound())
              
-            diff = (self.lower_bound[-1] - self.lower_bound[-2]) / abs(self.lower_bound[-1])
+            diff = (self.lower_bound[-1] - self.lower_bound[-2]) / np.abs(self.lower_bound[-1])
              
             print i, self.lower_bound[-1], diff
              
@@ -221,7 +221,8 @@ class VariationalBayesGenotyper(object):
         singlet_term = singlet_term.sum(axis=1)
         
         # SxTxKxM
-        singlet_term = e_log_epsilon[:, :, np.newaxis, np.newaxis] * singlet_term[np.newaxis, :, :, :]
+        singlet_term = safe_multiply(e_log_epsilon[:, :, np.newaxis, np.newaxis],
+                                     singlet_term[np.newaxis, :, :, :])
         
         # SxKxM
         singlet_term = singlet_term.sum(axis=1)
@@ -233,7 +234,7 @@ class VariationalBayesGenotyper(object):
         doublet_diff_term_temp = doublet_diff_term_temp.sum(axis=1)
 
         # SxTxKxKxM
-        doublet_diff_term_temp = np.exp(log_G[:, np.newaxis, np.newaxis, :, :] + np.log(doublet_diff_term_temp[np.newaxis, :, :, :, :] + 1e-100))
+        doublet_diff_term_temp = np.exp(log_G[:, np.newaxis, np.newaxis, :, :] + np.log(doublet_diff_term_temp[np.newaxis, :, :, :, :]))
         
 #         doublet_diff_term_temp = self.log_G[:, np.newaxis, np.newaxis, :, :] * doublet_diff_term_temp[np.newaxis, :, :, :, :]
 
@@ -249,10 +250,12 @@ class VariationalBayesGenotyper(object):
                         continue
                      
                     elif (u == s):
-                        doublet_diff_term[s, :, :, :] += e_log_epsilon[w, :, np.newaxis, np.newaxis] * doublet_diff_term_temp[v, :, :, :]
+                        doublet_diff_term[s, :, :, :] += safe_multiply(e_log_epsilon[w, :, np.newaxis, np.newaxis],
+                                                                       doublet_diff_term_temp[v, :, :, :])
                          
                     elif (v == s) :
-                        doublet_diff_term[s, :, :, :] += e_log_epsilon[w, :, np.newaxis, np.newaxis] * doublet_diff_term_temp[u, :, :, :]
+                        doublet_diff_term[s, :, :, :] += safe_multiply(e_log_epsilon[w, :, np.newaxis, np.newaxis],
+                                                                       doublet_diff_term_temp[u, :, :, :])
         
         # SxKxM
         doublet_diff_term = doublet_diff_term.sum(axis=1)
@@ -464,8 +467,7 @@ class VariationalBayesGenotyper(object):
         for s in state_map:
             for (u, v) in state_map[s]:
                 g_g[s, :, :, :] = g_g[s, :, :, :] + np.exp(log_G[u, :, np.newaxis, :] + log_G[v, np.newaxis, :, :])
-#                 g_g[s, :, :, :] += self.G[u, :, np.newaxis, :] * self.G[v, np.newaxis, :, :]
- 
+        
         return g_g
     
     def _get_G_same_marginalised(self, data_type):
@@ -546,7 +548,7 @@ class VariationalBayesGenotyper(object):
     def _diff_lower_bound(self):
         self._debug_lower_bound.append(self._compute_lower_bound())
         
-        diff = self._debug_lower_bound[-1] - self._debug_lower_bound[-2]
+        diff = (self._debug_lower_bound[-1] - self._debug_lower_bound[-2]) / np.abs(self._debug_lower_bound[-1])
         
         if diff < 0:
             print 'Bound decreased',
@@ -596,7 +598,7 @@ if __name__ == '__main__':
     
     np.seterr(all='warn')
     
-    np.random.seed(11)
+    np.random.seed(10)
     
     num_iters = 100
 
@@ -604,7 +606,7 @@ if __name__ == '__main__':
     
     N = 50
     
-    K_true = 9
+    K_true = 4
     
     M = {'snv' : 40, 'breakpoint' : 8}
     
@@ -646,21 +648,21 @@ if __name__ == '__main__':
         G_prior[data_type] = np.ones(S) * 1 / S
         
         
-    sim = simualte_data(alpha_prior, 
-                        gamma_prior, 
-                        kappa_prior, 
-                        G_prior, 
-                        M, 
-                        N, 
+    sim = simualte_data(alpha_prior,
+                        gamma_prior,
+                        kappa_prior,
+                        G_prior,
+                        M,
+                        N,
                         inverse_state_map)
         
     X = sim['X']
     
-    kappa_prior = np.ones(K) * 1e-3
+    kappa_prior = np.ones(K)
     
     model = VariationalBayesGenotyper(alpha_prior, gamma_prior, kappa_prior, G_prior, state_map, X)
 
-    model.fit(num_iters=100)
+    model.fit(num_iters=100, debug=False)
 
     Z = model.Z_0.argmax(axis=1)
     
