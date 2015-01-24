@@ -19,7 +19,7 @@ class VariationalBayesSingletGenotyper(object):
         
         self.G_prior = G_prior
         
-        self.data_types = G_prior.keys()
+        self.data_types = X.keys()
     
         self.N = X[X.keys()[0]].shape[0]
         

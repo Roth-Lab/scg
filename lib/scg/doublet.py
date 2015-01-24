@@ -30,7 +30,7 @@ class VariationalBayesDoubletGenotyper(object):
         
         self.state_map = state_map
         
-        self.data_types = self.state_map.keys()
+        self.data_types = X.keys()
     
         self.N = X[X.keys()[0]].shape[0]
         
