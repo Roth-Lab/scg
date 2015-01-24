@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+
+#=======================================================================================================================
+# Single Cell Genotyper
+# Author : Andrew Roth
+#=======================================================================================================================
+from scg.run import run_doublet_analysis, run_singlet_analysis
+
+import argparse
+
+parser = argparse.ArgumentParser(prog='Single Cell Genotyper')
+
+parser.add_argument('--version', action='version', version='0.1.0')
+
+subparsers = parser.add_subparsers()
+
+#---------------------------------------------------------------------------------------------------------------------- 
+doublet_parser = subparsers.add_parser('run_doublet_model', help='''Analyse single cell data.''')
+
+doublet_parser.add_argument('--config_file', required=True,
+                            help='''Path to YAML format configuration file.''')
+
+doublet_parser.add_argument('--state_map_file', required=True)
+
+doublet_parser.add_argument('--out_dir', required=True,
+                            help='''Path where output files will be written.''')
+
+doublet_parser.add_argument('--convergence_tolerance', default=1e-4, type=float)
+
+doublet_parser.add_argument('--max_num_iters', default=1000, type=int)
+
+doublet_parser.add_argument('--seed', default=None, type=int,
+                            help='''Set random seed so results can be reproduced. By default a random seed is
+                            chosen.''')
+
+doublet_parser.set_defaults(func=run_doublet_analysis)
+
+#---------------------------------------------------------------------------------------------------------------------- 
+singlet_parser = subparsers.add_parser('run_singlet_model', help='''Analyse single cell data.''')
+
+singlet_parser.add_argument('--config_file', required=True,
+                            help='''Path to YAML format configuration file.''')
+
+singlet_parser.add_argument('--out_dir', required=True,
+                            help='''Path where output files will be written.''')
+
+singlet_parser.add_argument('--convergence_tolerance', default=1e-4, type=float)
+
+singlet_parser.add_argument('--max_num_iters', default=1000, type=int)
+
+singlet_parser.add_argument('--seed', default=None, type=int,
+                            help='''Set random seed so results can be reproduced. By default a random seed is
+                            chosen.''')
+
+singlet_parser.set_defaults(func=run_singlet_analysis)
+
+#---------------------------------------------------------------------------------------------------------------------- 
+args = parser.parse_args()
+
+args.func(args)
