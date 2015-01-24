@@ -101,7 +101,16 @@ class VariationalBayesDoubletGenotyper(object):
     @property
     def e_log_pi(self):
         return compute_e_log_dirichlet(self.kappa)
-
+    
+    @property
+    def G(self):
+        G = {}
+        
+        for data_type in self.data_types:
+            G[data_type] = self.get_G(data_type)
+        
+        return G
+    
     @property
     def Z(self):
         return np.exp(self.log_Z)

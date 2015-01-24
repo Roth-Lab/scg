@@ -8,7 +8,7 @@ from scg.utils import compute_e_log_dirichlet, compute_e_log_q_dirichlet, comput
                       compute_e_log_q_discrete, get_indicator_matrix, safe_multiply
 
 class VariationalBayesSingletGenotyper(object):
-    def __init__(self, gamma_prior, kappa_prior, G_prior, state_map, X):    
+    def __init__(self, gamma_prior, kappa_prior, G_prior, X):    
         self.K = len(kappa_prior)
         
         self.gamma_prior = gamma_prior
@@ -19,9 +19,7 @@ class VariationalBayesSingletGenotyper(object):
         
         self.G_prior = G_prior
         
-        self.state_map = state_map
-        
-        self.data_types = self.state_map.keys()
+        self.data_types = G_prior.keys()
     
         self.N = X[X.keys()[0]].shape[0]
         
@@ -75,7 +73,16 @@ class VariationalBayesSingletGenotyper(object):
     @property
     def e_log_pi(self):
         return compute_e_log_dirichlet(self.kappa)
-
+    
+    @property
+    def G(self):
+        G = {}
+        
+        for data_type in self.data_types:
+            G[data_type] = self.get_G(data_type)
+        
+        return G    
+    
     @property
     def Z(self):
         return np.exp(self.log_Z)
