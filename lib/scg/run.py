@@ -21,7 +21,11 @@ def run_doublet_analysis(args):
     cell_ids, data, event_ids, priors = load_data(args.config_file)
     
     print 'Number of cells: {0}'.format(len(cell_ids))
-    print 'Number of events {0}'.format(len(event_ids))
+    
+    print 'Number of data types: {0}'.format(len(event_ids))
+    
+    for data_type in event_ids:
+        print 'Number of {0} events: {1}'.format(data_type, len(event_ids[data_type]))
     
     with open(args.state_map_file) as fh:
         state_map = yaml.load(fh)
@@ -105,7 +109,7 @@ def load_data(file_name):
     return  cell_ids, data, event_ids, priors
 
 def _load_data_frame(file_name):
-    print file_name
+    print 'Loading {0}.'.format(file_name)
     df = pd.read_csv(file_name, compression='gzip', index_col='cell_id', sep='\t')
     
     return df
@@ -170,7 +174,7 @@ def write_params(model, out_dir):
     params['gamma'] = {}
     
     for data_type in model.gamma:
-        params['gamma'][data_type] = [[float(x) for x in row] for row in model.gamma[data_type]],
+        params['gamma'][data_type] = [[float(x) for x in row] for row in model.gamma[data_type]]
     
     if hasattr(model, 'alpha'):
         params['alpha'] = [float(x) for x in model.alpha]
