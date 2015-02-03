@@ -306,7 +306,7 @@ if __name__ == '__main__':
     
     K_true = 4
     
-    M = {'snv' : 40, 'breakpoint' : 8}
+    M = {'snv' : 100, 'breakpoint' : 8}
     
     state_map = {
                  'snv' : {0 : [(0, 0)],
@@ -358,7 +358,7 @@ if __name__ == '__main__':
     
     kappa_prior = np.ones(K)
     
-    model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, state_map, X)
+    model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, X)
 
     model.fit(num_iters=100, debug=False)
 
