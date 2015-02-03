@@ -210,8 +210,8 @@ class VariationalBayesDoubletGenotyper(object):
         X = self.X[data_type]
         
         e_log_epsilon = self.get_e_log_epsilon(data_type)
-        
-        log_G = self.log_G[data_type]
+
+        G = self.get_G(data_type)
         
         state_map = self.state_map[data_type]
         
@@ -230,40 +230,37 @@ class VariationalBayesDoubletGenotyper(object):
                                  self.Z_0[np.newaxis, np.newaxis, :, :, np.newaxis],
                                  X[np.newaxis, :, :, np.newaxis, :],
                                  e_log_epsilon[:, :, np.newaxis, np.newaxis, np.newaxis])
-        
-        # TxKxKxM
-        doublet_diff_term_temp = np.einsum('tnklm, tnklm -> tklm',
-                                           self.Z_1[np.newaxis, :, :, :, np.newaxis],
-                                           X[:, :, np.newaxis, np.newaxis, :])
-
-        # SxTxKxKxM
-        doublet_diff_term_temp = np.exp(log_G[:, np.newaxis, np.newaxis, :, :] + np.log(doublet_diff_term_temp[np.newaxis, :, :, :, :]))
-
+        # SxTxKxM
+        doublet_diff_term_temp = np.einsum('stnklm, stnklm, stnklm -> stklm',
+                                           G[:, np.newaxis, np.newaxis, np.newaxis, :, :],
+                                           self.Z_1[np.newaxis, np.newaxis, :, :, :, np.newaxis],
+                                           X[np.newaxis, :, :, np.newaxis, np.newaxis, :])
+ 
         # SxTxKxM
         doublet_diff_term_temp = doublet_diff_term_temp.sum(axis=3) - np.swapaxes(np.diagonal(doublet_diff_term_temp, axis1=2, axis2=3), -2, -1)
-
+ 
         doublet_diff_term = np.zeros(doublet_diff_term_temp.shape)
-        
+         
         for s in state_map:
             for w in state_map:
                 for (u, v) in state_map[w]:
                     if(u != s) and (v != s):
                         continue
-                     
+                      
                     elif (u == s):
                         doublet_diff_term[s, :, :, :] += safe_multiply(e_log_epsilon[w, :, np.newaxis, np.newaxis],
                                                                        doublet_diff_term_temp[v, :, :, :])
-                         
+                          
                     elif (v == s) :
                         doublet_diff_term[s, :, :, :] += safe_multiply(e_log_epsilon[w, :, np.newaxis, np.newaxis],
                                                                        doublet_diff_term_temp[u, :, :, :])
-        
+         
         # SxKxM
         doublet_diff_term = doublet_diff_term.sum(axis=1)
         
         # TxKxM
         doublet_same_term_temp = np.einsum('tnkm, tnkm -> tkm',
-                                           self.Z_1_k_k[np.newaxis, :, :, np.newaxis], 
+                                           self.Z_1_k_k[np.newaxis, :, :, np.newaxis],
                                            X[:, :, np.newaxis, :])
    
         # SxTxKxM
@@ -558,13 +555,13 @@ if __name__ == '__main__':
     
     num_iters = 100
 
-    K = 10
+    K = 25
     
-    N = 1000
+    N = 100
     
     K_true = 4
     
-    M = {'snv' : 1000, 'breakpoint' : 10}
+    M = {'snv' : 100, 'breakpoint' : 10}
     
     state_map = {
                  'snv' : {0 : [(0, 0)],
@@ -617,14 +614,15 @@ if __name__ == '__main__':
     kappa_prior = np.ones(K)
 
     model = VariationalBayesDoubletGenotyper(alpha_prior, gamma_prior, kappa_prior, G_prior, state_map, X)
-        
-    from line_profiler import LineProfiler
+    
+    model.fit(debug=True)
+#     from line_profiler import LineProfiler
       
-    profiler = LineProfiler(VariationalBayesDoubletGenotyper._get_G_G_marginalised)
+#     profiler = LineProfiler(VariationalBayesDoubletGenotyper._get_G_G_marginalised)
   
-    profiler.runcall(model.fit)
+#     profiler.runcall(model.fit)
       
-    profiler.print_stats()
+#     profiler.print_stats()
     
 #     from memory_profiler import memory_usage
     
