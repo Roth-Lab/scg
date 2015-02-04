@@ -292,41 +292,9 @@ class VariationalBayesSingletGenotyper(object):
 if __name__ == '__main__':
     from sklearn.metrics import v_measure_score
     
-    from simulate import simualte_data
+    from simulate import get_default_dirichlet_mixture_sim, get_default_genotyper_sim
     
     np.seterr(all='warn')
-    
-    np.random.seed(1)
-    
-    num_iters = 100
-
-    K = 40
-    
-    N = 1000
-    
-    K_true = 4
-    
-    M = {'snv' : 100, 'breakpoint' : 8}
-    
-    state_map = {
-                 'snv' : {0 : [(0, 0)],
-                          1 : [(0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1)],
-                          2 : [(2, 2)]},
-                 'breakpoint' : {0 : [(0, 0)],
-                                 1 : [(0, 1), (1, 0), (1, 1)]}
-                 }
-    
-    inverse_state_map = {}
-    
-    for data_type in state_map:
-        inverse_state_map[data_type] = {}
-        
-        for s in state_map[data_type]:
-            for (u, v) in state_map[data_type][s]:
-                inverse_state_map[data_type][(u, v)] = s
-    
-
-    alpha_prior = np.array([100, 1e-3])
     
     gamma_prior = {
                    'snv' : np.array([[98, 1, 1],
@@ -335,33 +303,47 @@ if __name__ == '__main__':
                    'breakpoint' : np.array([[90, 10],
                                             [1, 99]])}
     
-    kappa_prior = np.concatenate([np.ones(K_true), np.ones(K - K_true) * 1e-6])
-        
+    kappa_prior = np.ones(20)
     
     G_prior = {}
     
-    for data_type in state_map:
+    for data_type in gamma_prior:
         S = gamma_prior[data_type].shape[0]
         
         G_prior[data_type] = np.ones(S) * 1 / S
-        
-        
-    sim = simualte_data(alpha_prior,
-                        gamma_prior,
-                        kappa_prior,
-                        G_prior,
-                        M,
-                        N,
-                        inverse_state_map)
-        
-    X = sim['X']
     
-    kappa_prior = np.ones(K)
+    np.random.seed(0)
     
-    model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, X)
+    sim = get_default_dirichlet_mixture_sim()
 
-    model.fit(num_iters=100, debug=False)
-
-    Z = model.Z.argmax(axis=1)
+    v_dmm = []
+     
+    for i in range(100):
+        np.random.seed(i)
+        
+        model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, sim['X'])
+     
+        model.fit(num_iters=100)
+     
+        Z = model.Z.argmax(axis=1)
+        
+        v_dmm.append(v_measure_score(sim['Z'], Z))    
     
-    print v_measure_score(sim['Z'][0][sim['Y'] == 0], Z[sim['Y'] == 0])
+    np.random.seed(0)
+    
+    sim = get_default_genotyper_sim()
+
+    v_gen = []
+     
+    for i in range(10):
+        np.random.seed(i)
+        
+        model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, sim['X'])
+     
+        model.fit(num_iters=100)
+     
+        Z = model.Z.argmax(axis=1)
+        
+        v_gen.append(v_measure_score(sim['Z'][0][sim['Y'] == 0], Z[sim['Y'] == 0]))
+         
+    print max(v_dmm), max(v_gen)
