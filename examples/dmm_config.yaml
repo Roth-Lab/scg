@@ -1,0 +1,14 @@
+num_clusters: 40
+
+kappa_prior: 1
+
+data:
+  snv:
+    file: examples/snv.tsv.gz
+    
+    gamma_prior: [1, 1, 1]
+  
+  breakpoint:
+    file: examples/breakpoint.tsv.gz
+    
+    gamma_prior: [1, 1]
