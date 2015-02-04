@@ -153,7 +153,7 @@ def write_genotype_posteriors(event_ids, G, out_dir):
             
             df.insert(1, 'event_type', data_type)
             
-            df.insert(2, 'event_value', i)
+            df.insert(3, 'event_value', i)
             
             G_out.append(df)
     
