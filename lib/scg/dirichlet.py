@@ -74,8 +74,6 @@ class VariationalBayesDirichletMixtureModel(object):
     def fit(self, convergence_tolerance=1e-4, debug=False, num_iters=100):
         for i in range(num_iters):
             
-            print self.Z.min(), self.Z.max()
-             
             self._update_gamma()
             
             if debug:

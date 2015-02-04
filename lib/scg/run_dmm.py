@@ -42,7 +42,7 @@ def load_data(file_name):
     
     event_ids = {}
     
-    priors = {'gamma' : {}, 'G' : {}}
+    priors = {'gamma' : {}}
 
     for data_type in config['data']:
         data[data_type] = _load_data_frame(config['data'][data_type]['file'])
@@ -78,14 +78,10 @@ def write_cluster_posteriors(cell_ids, Z, out_dir):
         df.to_csv(fh, index_label='cell_id', sep='\t')
 
 def write_genotype_posteriors(event_ids, gamma, out_dir):
-    def get_probability(df):
-        df['probability'] = df['gamma_parameter'] / df['gamma_parameter'].sum()
-    
-        return df
 
     file_name = os.path.join(out_dir, 'genotype_posteriors.tsv.gz')
     
-    gamma_out = []
+    data = []
     
     for data_type in event_ids:
         for t in range(gamma[data_type].shape[0]):
@@ -100,15 +96,15 @@ def write_genotype_posteriors(event_ids, gamma, out_dir):
             df.insert(1, 'event_type', data_type)
             
             df.insert(3, 'event_value', t)
-            
-            df = df.groupby(['cluster_id', 'event_id']).apply(get_probability)
-             
-            gamma_out.append(df)
+
+            data.append(df)
     
-    gamma_out = pd.concat(gamma_out)
+    data = pd.concat(data)
+    
+    data['probability'] = data.groupby(['cluster_id', 'event_id', 'event_type']).gamma_parameter.transform(lambda x: x / x.sum())
   
     with gzip.GzipFile(file_name, 'w') as fh:
-        gamma_out.to_csv(fh, index=False, sep='\t')
+        data.to_csv(fh, index=False, sep='\t')
 
 def write_params(model, out_dir):
     file_name = os.path.join(out_dir, 'params.yaml')
