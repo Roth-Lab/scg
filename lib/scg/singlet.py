@@ -318,7 +318,7 @@ if __name__ == '__main__':
 
     v_dmm = []
      
-    for i in range(100):
+    for i in range(10):
         np.random.seed(i)
         
         model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, sim['X'])

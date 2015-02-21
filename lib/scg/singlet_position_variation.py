@@ -47,12 +47,12 @@ class VariationalBayesSingletGenotyper(object):
         
             self.X[data_type] = get_indicator_matrix(range(self.T[data_type]), X[data_type])
             
-            self.gamma[data_type] = np.tile(gamma_prior[data_type], self.M[data_type])
+            self.gamma[data_type] = np.repeat(gamma_prior[data_type], self.M[data_type])
             
-            self.gamma[data_type] = self.gamma[data_type].reshape((self.S[data_type], 
-                                                                   self.T[data_type], 
+            self.gamma[data_type] = self.gamma[data_type].reshape((self.S[data_type],
+                                                                   self.T[data_type],
                                                                    self.M[data_type]))
-        
+            
             self._init_G(data_type)
         
         self.lower_bound = [float('-inf')]
@@ -69,8 +69,13 @@ class VariationalBayesSingletGenotyper(object):
         self.log_G[data_type] = np.log(G)
 
     def get_e_log_epsilon(self, data_type):
-        return compute_e_log_dirichlet(self.gamma[data_type])
-
+        e_log_epsilon = np.zeros((self.gamma[data_type].shape))
+        
+        for m in range(self.M[data_type]):
+            e_log_epsilon[:, :, m] = compute_e_log_dirichlet(self.gamma[data_type][:, :, m])
+        
+        return e_log_epsilon
+        
     def get_G(self, data_type):
         return np.exp(self.log_G[data_type])
 
@@ -148,14 +153,11 @@ class VariationalBayesSingletGenotyper(object):
         
         G_prior = self.G_prior[data_type]
         
-        log_G = np.einsum('tnkm, tnkm -> tkm',
-                          X[:, :, np.newaxis, :],
-                          Z[np.newaxis, :, :, np.newaxis])
+        log_G = np.einsum('stnkm, stnkm, stnkm -> skm',
+                          X[np.newaxis, :, :, np.newaxis, :],
+                          Z[np.newaxis, np.newaxis, :, :, np.newaxis],
+                          e_log_epsilon[:, :, np.newaxis, np.newaxis, :])
 
-        log_G = np.einsum('stkm, stkm -> skm', 
-                          e_log_epsilon[:, :, np.newaxis, :], 
-                          log_G[np.newaxis, :, :, :])
-        
         # SxKxM
         log_G = np.log(G_prior)[:, np.newaxis, np.newaxis] + log_G
         
@@ -232,7 +234,16 @@ class VariationalBayesSingletGenotyper(object):
         return np.sum(safe_multiply(self.e_log_pi, self._get_kappa_data_term()))
     
     def _compute_e_log_p_gamma_posterior(self, data_type):
-        return np.sum(safe_multiply(self.get_e_log_epsilon(data_type), self._get_gamma_data_term(data_type)))
+        e_log_epsilon = self.get_e_log_epsilon(data_type)
+        
+        data_term = self._get_gamma_data_term(data_type)
+        
+        result = 0
+        
+        for m in range(self.M[data_type]):    
+            result += np.sum(safe_multiply(e_log_epsilon[:, :, m], data_term[:, :, m]))
+        
+        return result
     
     def _compute_log_p_G(self, data_type):
         return np.sum(self.G_prior[data_type] * self.get_G(data_type).sum(axis=(1, 2)))
@@ -241,7 +252,8 @@ class VariationalBayesSingletGenotyper(object):
         log_q_epsilon = 0
         
         for data_type in self.data_types:
-            log_q_epsilon += sum([compute_e_log_q_dirichlet(x) for x in self.gamma[data_type]])
+            for m in range(self.M[data_type]):
+                log_q_epsilon += sum([compute_e_log_q_dirichlet(x)  for x in self.gamma[data_type][:, :, m]])
       
         log_q_pi = compute_e_log_q_dirichlet(self.kappa)
         
@@ -265,7 +277,7 @@ class VariationalBayesSingletGenotyper(object):
         # SxNxKxM
         data_term = np.exp(self.log_Z[np.newaxis, :, :, np.newaxis] + log_G[:, np.newaxis, :, :])
 
-        # SxT
+        # SxTxM
         return np.einsum('stnkm, stnkm -> stm', data_term[:, np.newaxis, :, :, :], X[np.newaxis, :, :, np.newaxis, :])
     
     def _get_kappa_data_term(self):
@@ -310,7 +322,7 @@ if __name__ == '__main__':
 
     v_dmm = []
      
-    for i in range(100):
+    for i in range(40):
         np.random.seed(i)
         
         model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, sim['X'])
@@ -327,7 +339,7 @@ if __name__ == '__main__':
 
     v_gen = []
      
-    for i in range(10):
+    for i in range(1):
         np.random.seed(i)
         
         model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, sim['X'])
