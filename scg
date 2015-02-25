@@ -15,64 +15,42 @@ parser.add_argument('--version', action='version', version='0.1.2')
 
 subparsers = parser.add_subparsers()
 
-#---------------------------------------------------------------------------------------------------------------------- 
-doublet_parser = subparsers.add_parser('run_doublet_model', 
-                                       help='''Analyse single cell data using the single cell genotyper model accounting for doublets.''')
+#=======================================================================================================================
+# Shared analysis parser
+#=======================================================================================================================
+analysis_parser = argparse.ArgumentParser(add_help=False)
 
-doublet_parser.add_argument('--config_file', required=True,
+analysis_parser.add_argument('--config_file', required=True,
                             help='''Path to YAML format configuration file.''')
 
-doublet_parser.add_argument('--state_map_file', required=True)
-
-doublet_parser.add_argument('--out_dir', required=True,
+analysis_parser.add_argument('--out_dir', required=True,
                             help='''Path where output files will be written.''')
 
-doublet_parser.add_argument('--convergence_tolerance', default=1e-4, type=float)
+analysis_parser.add_argument('--convergence_tolerance', default=1e-4, type=float)
 
-doublet_parser.add_argument('--max_num_iters', default=1000, type=int)
+analysis_parser.add_argument('--max_num_iters', default=1000, type=int)
 
-doublet_parser.add_argument('--seed', default=None, type=int,
-                            help='''Set random seed so results can be reproduced. By default a random seed is
-                            chosen.''')
+analysis_parser.add_argument('--seed', default=None, type=int,
+                             help='''Set random seed so results can be reproduced. By default a random seed is
+                             chosen.''')
+
+#---------------------------------------------------------------------------------------------------------------------- 
+doublet_parser = subparsers.add_parser('run_doublet_model', parents=[analysis_parser],
+                                       help='''Analyse single cell data using the single cell genotyper model accounting for doublets.''')
+
+doublet_parser.add_argument('--state_map_file', required=True)
 
 doublet_parser.set_defaults(func=run_doublet_analysis)
 
 #---------------------------------------------------------------------------------------------------------------------- 
-singlet_parser = subparsers.add_parser('run_singlet_model', 
+singlet_parser = subparsers.add_parser('run_singlet_model', parents=[analysis_parser],
                                        help='''Analyse single cell data using the single cell genotyper model.''')
-
-singlet_parser.add_argument('--config_file', required=True,
-                            help='''Path to YAML format configuration file.''')
-
-singlet_parser.add_argument('--out_dir', required=True,
-                            help='''Path where output files will be written.''')
-
-singlet_parser.add_argument('--convergence_tolerance', default=1e-4, type=float)
-
-singlet_parser.add_argument('--max_num_iters', default=1000, type=int)
-
-singlet_parser.add_argument('--seed', default=None, type=int,
-                            help='''Set random seed so results can be reproduced. By default a random seed is
-                            chosen.''')
 
 singlet_parser.set_defaults(func=run_singlet_analysis)
 
 #---------------------------------------------------------------------------------------------------------------------- 
-dmm_parser = subparsers.add_parser('run_dirichlet_mixture_model', 
-                                    help='''Analyse single cell data using a mixture of Dirichlet distributions.''')
-
-dmm_parser.add_argument('--config_file', required=True,
-                        help='''Path to YAML format configuration file.''')
-
-dmm_parser.add_argument('--out_dir', required=True,
-                        help='''Path where output files will be written.''')
-
-dmm_parser.add_argument('--convergence_tolerance', default=1e-4, type=float)
-
-dmm_parser.add_argument('--max_num_iters', default=1000, type=int)
-
-dmm_parser.add_argument('--seed', default=None, type=int,
-                        help='''Set random seed so results can be reproduced. By default a random seed is chosen.''')
+dmm_parser = subparsers.add_parser('run_dirichlet_mixture_model', parents=[analysis_parser],
+                                   help='''Analyse single cell data using a mixture of Dirichlet distributions.''')
 
 dmm_parser.set_defaults(func=run_dirichlet_mixture_model_analysis)
 
