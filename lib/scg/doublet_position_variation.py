@@ -12,7 +12,7 @@ import numpy as np
 from scg.utils import compute_e_log_dirichlet, compute_e_log_p_dirichlet, compute_e_log_q_dirichlet, \
                       compute_e_log_q_discrete, safe_multiply, get_indicator_matrix
 
-class VariationalBayesDoubletGenotyper(object):
+class VariationalBayesDoubletGenotyperPositionSpecific(object):
     def __init__(self, alpha_prior, gamma_prior, kappa_prior, G_prior, state_map, X):    
         self.K = len(kappa_prior)
         
@@ -594,7 +594,7 @@ if __name__ == '__main__':
     for i in range(10):
         np.random.seed(i)
         
-        model = VariationalBayesDoubletGenotyper(alpha_prior, gamma_prior, kappa_prior, G_prior, state_map, sim['X'])
+        model = VariationalBayesDoubletGenotyperPositionSpecific(alpha_prior, gamma_prior, kappa_prior, G_prior, state_map, sim['X'])
      
         model.fit(num_iters=100)
      
@@ -611,7 +611,7 @@ if __name__ == '__main__':
     for i in range(10):
         np.random.seed(i)
         
-        model = VariationalBayesDoubletGenotyper(alpha_prior, gamma_prior, kappa_prior, G_prior, state_map, sim['X'])
+        model = VariationalBayesDoubletGenotyperPositionSpecific(alpha_prior, gamma_prior, kappa_prior, G_prior, state_map, sim['X'])
      
         model.fit(num_iters=100)
      

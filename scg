@@ -43,11 +43,15 @@ doublet_parser = subparsers.add_parser('run_doublet_model', parents=[analysis_pa
 
 doublet_parser.add_argument('--state_map_file', required=True)
 
+doublet_parser.add_argument('--use_position_specific_error_rate', action='store_true', default=False)
+
 doublet_parser.set_defaults(func=run_doublet_analysis)
 
 #---------------------------------------------------------------------------------------------------------------------- 
 singlet_parser = subparsers.add_parser('run_singlet_model', parents=[analysis_parser],
                                        help='''Analyse single cell data using the single cell genotyper model.''')
+
+singlet_parser.add_argument('--use_position_specific_error_rate', action='store_true', default=False)
 
 singlet_parser.set_defaults(func=run_singlet_analysis)
 

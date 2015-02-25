@@ -12,7 +12,9 @@ import pandas as pd
 import yaml
 
 from scg.doublet import VariationalBayesDoubletGenotyper
+from scg.doublet_position_variation import VariationalBayesDoubletGenotyperPositionSpecific
 from scg.singlet import VariationalBayesSingletGenotyper
+from scg.singlet_position_variation import VariationalBayesSingletGenotyperPositionSpecific
 
 def run_doublet_analysis(args):
     if args.seed is not None:
@@ -30,12 +32,18 @@ def run_doublet_analysis(args):
     with open(args.state_map_file) as fh:
         state_map = yaml.load(fh)
     
-    model = VariationalBayesDoubletGenotyper(priors['alpha'],
-                                             priors['gamma'],
-                                             priors['kappa'],
-                                             priors['G'],
-                                             state_map,
-                                             data) 
+    if args.use_position_specific_error_rate:
+        model_class = VariationalBayesDoubletGenotyperPositionSpecific
+    
+    else:
+        model_class = VariationalBayesDoubletGenotyper
+    
+    model = model_class(priors['alpha'],
+                        priors['gamma'],
+                        priors['kappa'],
+                        priors['G'],
+                        state_map,
+                        data) 
 
     model.fit(convergence_tolerance=args.convergence_tolerance, num_iters=args.max_num_iters)
     
@@ -51,7 +59,7 @@ def run_doublet_analysis(args):
     
         write_genotype_posteriors(event_ids, model.G, args.out_dir)
             
-        write_params(model, args.out_dir)
+        write_params(model, args.out_dir, event_ids, position_specific_error=args.use_position_specific_error_rate)
 
 def run_singlet_analysis(args):
     if args.seed is not None:
@@ -61,11 +69,17 @@ def run_singlet_analysis(args):
     
     print 'Number of cells: {0}'.format(len(cell_ids))
     print 'Number of events {0}'.format(len(event_ids))
-
-    model = VariationalBayesSingletGenotyper(priors['gamma'],
-                                             priors['kappa'],
-                                             priors['G'],
-                                             data)
+    
+    if args.use_position_specific_error_rate:
+        model_class = VariationalBayesSingletGenotyperPositionSpecific
+    
+    else:
+        model_class = VariationalBayesSingletGenotyper
+    
+    model = model_class(priors['gamma'],
+                        priors['kappa'],
+                        priors['G'],
+                        data)
         
     model.fit(convergence_tolerance=args.convergence_tolerance, num_iters=args.max_num_iters)
     
@@ -77,7 +91,7 @@ def run_singlet_analysis(args):
         
         write_genotype_posteriors(event_ids, model.G, args.out_dir)
             
-        write_params(model, args.out_dir)
+        write_params(model, args.out_dir, event_ids, position_specific_error=args.use_position_specific_error_rate)
     
 def load_data(file_name):
     with open(file_name) as fh:
@@ -170,7 +184,7 @@ def write_genotype_posteriors(event_ids, G, out_dir):
     with gzip.GzipFile(file_name, 'w') as fh:
         G_out.to_csv(fh, index=False, sep='\t')
 
-def write_params(model, out_dir):
+def write_params(model, out_dir, event_ids, position_specific_error):
     file_name = os.path.join(out_dir, 'params.yaml')
     
     params = {
@@ -182,7 +196,14 @@ def write_params(model, out_dir):
     params['gamma'] = {}
     
     for data_type in model.gamma:
-        params['gamma'][data_type] = [[float(x) for x in row] for row in model.gamma[data_type]]
+        if position_specific_error:
+            params['gamma'][data_type] = {}
+            
+            for m, e in enumerate(event_ids[data_type]):
+                params['gamma'][data_type][e] = [[float(x) for x in row] for row in model.gamma[data_type][:, :, m]]
+        
+        else:
+            params['gamma'][data_type] = [[float(x) for x in row] for row in model.gamma[data_type]]
     
     if hasattr(model, 'alpha'):
         params['alpha'] = [float(x) for x in model.alpha]
