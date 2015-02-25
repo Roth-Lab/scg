@@ -23,7 +23,10 @@ analysis_parser = argparse.ArgumentParser(add_help=False)
 analysis_parser.add_argument('--config_file', required=True,
                             help='''Path to YAML format configuration file.''')
 
-analysis_parser.add_argument('--out_dir', required=True,
+analysis_parser.add_argument('--lower_bound_file', default=None,
+                             help='''Path of file where lower bound will be written.''')
+
+analysis_parser.add_argument('--out_dir', default=None,
                             help='''Path where output files will be written.''')
 
 analysis_parser.add_argument('--convergence_tolerance', default=1e-4, type=float)

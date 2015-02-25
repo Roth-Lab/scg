@@ -39,21 +39,25 @@ def run_doublet_analysis(args):
 
     model.fit(convergence_tolerance=args.convergence_tolerance, num_iters=args.max_num_iters)
     
-    write_cluster_posteriors(cell_ids, model.Z_0, args.out_dir)
-    
-    write_double_cluster_posteriors(cell_ids, model, args.out_dir)
-    
-    write_doublet_posteriors(cell_ids, model, args.out_dir)
-
-    write_genotype_posteriors(event_ids, model.G, args.out_dir)
+    if args.lower_bound_file is not None:
+        write_lower_bound(model, args.lower_bound_file)
+            
+    if args.out_dir is not None:
+        write_cluster_posteriors(cell_ids, model.Z_0, args.out_dir)
         
-    write_params(model, args.out_dir)
+        write_double_cluster_posteriors(cell_ids, model, args.out_dir)
+        
+        write_doublet_posteriors(cell_ids, model, args.out_dir)
+    
+        write_genotype_posteriors(event_ids, model.G, args.out_dir)
+            
+        write_params(model, args.out_dir)
 
 def run_singlet_analysis(args):
     if args.seed is not None:
         np.random.seed(args.seed)
        
-    cell_ids, data, event_ids, priors= load_data(args.config_file)
+    cell_ids, data, event_ids, priors = load_data(args.config_file)
     
     print 'Number of cells: {0}'.format(len(cell_ids))
     print 'Number of events {0}'.format(len(event_ids))
@@ -64,12 +68,16 @@ def run_singlet_analysis(args):
                                              data)
         
     model.fit(convergence_tolerance=args.convergence_tolerance, num_iters=args.max_num_iters)
-
-    write_cluster_posteriors(cell_ids, model.Z, args.out_dir)
     
-    write_genotype_posteriors(event_ids, model.G, args.out_dir)
+    if args.lower_bound_file is not None:
+        write_lower_bound(model, args.lower_bound_file)
+
+    if args.out_dir is not None:
+        write_cluster_posteriors(cell_ids, model.Z, args.out_dir)
         
-    write_params(model, args.out_dir)
+        write_genotype_posteriors(event_ids, model.G, args.out_dir)
+            
+        write_params(model, args.out_dir)
     
 def load_data(file_name):
     with open(file_name) as fh:
@@ -181,3 +189,9 @@ def write_params(model, out_dir):
 
     with open(file_name, 'w') as fh:
         yaml.dump(params, fh, default_flow_style=False)
+        
+def write_lower_bound(model, out_file):
+    with open(out_file, 'w') as fh:
+        result = {'lower_bound' : float(model.lower_bound[-1]), 'converged' : model.converged}
+        
+        yaml.dump(result, fh, default_flow_style=False)
