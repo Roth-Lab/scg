@@ -1,5 +1,9 @@
 # Versions
 
+## 0.2.1
+
+- Minor bug fix in number of events reported to user at the start of run.
+
 ## 0.2.0
 
 - Added position specific version of genotyper models
