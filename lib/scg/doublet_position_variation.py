@@ -405,7 +405,16 @@ class VariationalBayesDoubletGenotyperPositionSpecific(object):
         return np.sum(safe_multiply(self.e_log_pi, self._get_kappa_data_term()))
     
     def _compute_e_log_p_gamma_posterior(self, data_type):
-        return np.sum(safe_multiply(self.get_e_log_epsilon(data_type), self._get_gamma_data_term(data_type)))
+        e_log_epsilon = self.get_e_log_epsilon(data_type)
+        
+        data_term = self._get_gamma_data_term(data_type)
+        
+        result = 0
+        
+        for m in range(self.M[data_type]):    
+            result += np.sum(safe_multiply(e_log_epsilon[:, :, m], data_term[:, :, m]))
+        
+        return result
     
     def _compute_log_p_G(self, data_type):
         return np.sum(self.G_prior[data_type] * self.get_G(data_type).sum(axis=(1, 2)))
@@ -414,10 +423,11 @@ class VariationalBayesDoubletGenotyperPositionSpecific(object):
         log_q_d = compute_e_log_q_dirichlet(self.alpha)
         
         log_q_epsilon = 0
-        
+
         for data_type in self.data_types:
-            log_q_epsilon += sum([compute_e_log_q_dirichlet(x) for x in self.gamma[data_type]])
-      
+            for m in range(self.M[data_type]):
+                log_q_epsilon += sum([compute_e_log_q_dirichlet(x)  for x in self.gamma[data_type][:, :, m]])
+        
         log_q_pi = compute_e_log_q_dirichlet(self.kappa)
         
         log_q_g = 0
