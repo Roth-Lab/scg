@@ -18,9 +18,6 @@ def run_dirichlet_mixture_model_analysis(args):
         np.random.seed(args.seed)
        
     cell_ids, data, event_ids, priors = load_data(args.config_file)
-    
-    print 'Number of cells: {0}'.format(len(cell_ids))
-    print 'Number of events {0}'.format(len(event_ids))
 
     model = VariationalBayesDirichletMixtureModel(priors['gamma'], priors['kappa'], data)
         
@@ -63,6 +60,13 @@ def load_data(file_name):
         data[data_type] = data[data_type].loc[cell_ids]
     
     priors['kappa'] = np.ones(config['num_clusters']) * config['kappa_prior']
+    
+    print 'Number of cells: {0}'.format(len(cell_ids))
+    
+    print 'Number of data types: {0}'.format(len(event_ids))
+    
+    for data_type in event_ids:
+        print 'Number of {0} events: {1}'.format(data_type, len(event_ids[data_type]))
     
     return  cell_ids, data, event_ids, priors
 

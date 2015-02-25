@@ -21,14 +21,7 @@ def run_doublet_analysis(args):
         np.random.seed(args.seed)
        
     cell_ids, data, event_ids, priors = load_data(args.config_file)
-    
-    print 'Number of cells: {0}'.format(len(cell_ids))
-    
-    print 'Number of data types: {0}'.format(len(event_ids))
-    
-    for data_type in event_ids:
-        print 'Number of {0} events: {1}'.format(data_type, len(event_ids[data_type]))
-    
+
     with open(args.state_map_file) as fh:
         state_map = yaml.load(fh)
     
@@ -66,10 +59,7 @@ def run_singlet_analysis(args):
         np.random.seed(args.seed)
        
     cell_ids, data, event_ids, priors = load_data(args.config_file)
-    
-    print 'Number of cells: {0}'.format(len(cell_ids))
-    print 'Number of events {0}'.format(len(event_ids))
-    
+
     if args.use_position_specific_error_rate:
         model_class = VariationalBayesSingletGenotyperPositionSpecific
     
@@ -127,6 +117,13 @@ def load_data(file_name):
     
     if 'alpha_prior' in config:
         priors['alpha'] = np.array(config['alpha_prior'])
+    
+    print 'Number of cells: {0}'.format(len(cell_ids))
+    
+    print 'Number of data types: {0}'.format(len(event_ids))
+    
+    for data_type in event_ids:
+        print 'Number of {0} events: {1}'.format(data_type, len(event_ids[data_type]))
     
     return  cell_ids, data, event_ids, priors
 
