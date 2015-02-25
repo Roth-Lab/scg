@@ -25,12 +25,16 @@ def run_dirichlet_mixture_model_analysis(args):
     model = VariationalBayesDirichletMixtureModel(priors['gamma'], priors['kappa'], data)
         
     model.fit(convergence_tolerance=args.convergence_tolerance, num_iters=args.max_num_iters)
-
-    write_cluster_posteriors(cell_ids, model.Z, args.out_dir)
     
-    write_genotype_posteriors(event_ids, model.gamma, args.out_dir)
+    if args.lower_bound_file is not None:
+        write_lower_bound(model, args.lower_bound_file)
         
-    write_params(model, args.out_dir)
+    if args.out_dir is not None:
+        write_cluster_posteriors(cell_ids, model.Z, args.out_dir)
+        
+        write_genotype_posteriors(event_ids, model.gamma, args.out_dir)
+            
+        write_params(model, args.out_dir)
     
 def load_data(file_name):
     with open(file_name) as fh:
@@ -117,3 +121,9 @@ def write_params(model, out_dir):
     
     with open(file_name, 'w') as fh:
         yaml.dump(params, fh, default_flow_style=False)
+
+def write_lower_bound(model, out_file):
+    with open(out_file, 'w') as fh:
+        result = {'lower_bound' : float(model.lower_bound[-1]), 'converged' : model.converged}
+        
+        yaml.dump(result, fh, default_flow_style=False)
