@@ -1,5 +1,9 @@
 # Versions
 
+## 0.2.2
+
+- Bug fix in position specific doublet model lower bound code 
+
 ## 0.2.1
 
 - Minor bug fix in number of events reported to user at the start of run.
