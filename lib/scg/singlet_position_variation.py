@@ -7,7 +7,7 @@ import numpy as np
 from scg.utils import compute_e_log_dirichlet, compute_e_log_q_dirichlet, compute_e_log_p_dirichlet, \
                       compute_e_log_q_discrete, get_indicator_matrix, safe_multiply
 
-class VariationalBayesSingletGenotyper(object):
+class VariationalBayesSingletGenotyperPositionSpecific(object):
     def __init__(self, gamma_prior, kappa_prior, G_prior, X):    
         self.K = len(kappa_prior)
         
@@ -325,7 +325,7 @@ if __name__ == '__main__':
     for i in range(40):
         np.random.seed(i)
         
-        model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, sim['X'])
+        model = VariationalBayesSingletGenotyperPositionSpecific(gamma_prior, kappa_prior, G_prior, sim['X'])
      
         model.fit(num_iters=100)
      
@@ -342,7 +342,7 @@ if __name__ == '__main__':
     for i in range(1):
         np.random.seed(i)
         
-        model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, sim['X'])
+        model = VariationalBayesSingletGenotyperPositionSpecific(gamma_prior, kappa_prior, G_prior, sim['X'])
      
         model.fit(num_iters=100)
      
