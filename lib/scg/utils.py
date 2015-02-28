@@ -15,8 +15,8 @@ def compute_e_log_dirichlet(x):
 def get_indicator_matrix(states, X):
     Y = np.zeros((len(states), X.shape[0], X.shape[1]))
     
-    for s in states:
-        Y[s, :, :] = (X == s).astype(int)
+    for i, s in enumerate(states):
+        Y[i, :, :] = (X == s).astype(int)
     
     return Y
 
