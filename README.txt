@@ -1,5 +1,9 @@
 # Versions
 
+## 0.2.3
+
+- Minor bug fix.
+
 ## 0.2.2
 
 - Bug fix in position specific doublet model lower bound code 
