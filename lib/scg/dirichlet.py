@@ -13,7 +13,7 @@ from scg.utils import compute_e_log_dirichlet, compute_e_log_q_dirichlet, comput
                       compute_e_log_q_discrete, get_indicator_matrix, safe_multiply
 
 class VariationalBayesDirichletMixtureModel(object):
-    def __init__(self, gamma_prior, kappa_prior, X):    
+    def __init__(self, gamma_prior, kappa_prior, X, labels=None):    
         self.K = len(kappa_prior)
         
         self.gamma_prior = gamma_prior
@@ -44,8 +44,15 @@ class VariationalBayesDirichletMixtureModel(object):
         
             self.X[data_type] = get_indicator_matrix(range(self.T[data_type]), X[data_type])
 
-        self.log_Z = np.log(np.random.random(size=(self.N, self.K)))
+        if labels is None:
+            self.log_Z = np.log(np.random.random(size=(self.N, self.K)))
         
+        else:
+            self.log_Z = np.zeros((self.N, self.K))
+            
+            for i, s in enumerate(range(len(set(labels)))):
+                self.log_Z[:, i] = (labels == s).astype(int)
+                
         self.log_Z = self.log_Z - np.expand_dims(log_sum_exp(self.log_Z, axis=1), axis=1) 
         
         self.lower_bound = [float('-inf')]
