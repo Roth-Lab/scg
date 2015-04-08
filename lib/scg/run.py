@@ -13,6 +13,7 @@ import yaml
 
 from scg.doublet import VariationalBayesDoubletGenotyper
 from scg.doublet_position_variation import VariationalBayesDoubletGenotyperPositionSpecific
+from scg.doublet_position_sample_variation import VariationalBayesDoubletGenotyperPositionSampleSpecific
 from scg.singlet import VariationalBayesSingletGenotyper
 from scg.singlet_position_variation import VariationalBayesSingletGenotyperPositionSpecific
 
@@ -25,18 +26,41 @@ def run_doublet_analysis(args):
     with open(args.state_map_file) as fh:
         state_map = yaml.load(fh)
     
-    if args.use_position_specific_error_rate:
-        model_class = VariationalBayesDoubletGenotyperPositionSpecific
+    if args.sample_file is not None:
+        model_class = VariationalBayesDoubletGenotyperPositionSampleSpecific
+        
+        samples = pd.read_csv(args.sample_file, compression='gzip', index_col='cell_id', sep='\t')
+        
+        if not set(samples.index) == set(cell_ids):
+            raise Exception('Samples file must contain all entries from the data files.')
+        
+        samples = samples.loc[cell_ids]
+        
+        model = model_class(priors['alpha'],
+                            priors['gamma'],
+                            priors['kappa'],
+                            priors['G'],
+                            samples['sample'],
+                            state_map,
+                            data)
+        
+        print 'Number of samples: {0}'.format(len(model.kappa))
+        
+        args.use_position_specific_error_rate = True
     
     else:
-        model_class = VariationalBayesDoubletGenotyper
-    
-    model = model_class(priors['alpha'],
-                        priors['gamma'],
-                        priors['kappa'],
-                        priors['G'],
-                        state_map,
-                        data) 
+        if args.use_position_specific_error_rate:
+            model_class = VariationalBayesDoubletGenotyperPositionSpecific
+        
+        else:
+            model_class = VariationalBayesDoubletGenotyper
+        
+        model = model_class(priors['alpha'],
+                            priors['gamma'],
+                            priors['kappa'],
+                            priors['G'],
+                            state_map,
+                            data) 
 
     model.fit(convergence_tolerance=args.convergence_tolerance, num_iters=args.max_num_iters)
     
@@ -185,10 +209,19 @@ def write_params(model, out_dir, event_ids, position_specific_error):
     file_name = os.path.join(out_dir, 'params.yaml')
     
     params = {
-              'kappa' : [float(x) for x in model.kappa],
               'lower_bound' : float(model.lower_bound[-1]),
               'converged' : model.converged
               }
+    
+    if isinstance(model.kappa, dict):
+        params['kappa'] = {}
+        
+        for sample in model.kappa:
+            params['kappa'][sample] = [float(x) for x in model.kappa[sample]]
+            
+        
+    else:
+        params['kappa'] = [float(x) for x in model.kappa]
     
     params['gamma'] = {}
     

@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
       name='scg',
-      version='0.2.3',
+      version='0.3.0',
       description='Python tools for inferring clonal genotypes from single cell data.',
       author='Andrew Roth',
       author_email='andrewjlroth@gmail.com',
