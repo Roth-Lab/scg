@@ -11,7 +11,7 @@ import argparse
 
 parser = argparse.ArgumentParser(prog='Single Cell Genotyper')
 
-parser.add_argument('--version', action='version', version='0.2.3')
+parser.add_argument('--version', action='version', version='0.3.0')
 
 subparsers = parser.add_subparsers()
 
@@ -42,6 +42,8 @@ doublet_parser = subparsers.add_parser('run_doublet_model', parents=[analysis_pa
                                        help='''Analyse single cell data using the single cell genotyper model accounting for doublets.''')
 
 doublet_parser.add_argument('--state_map_file', required=True)
+
+doublet_parser.add_argument('--sample_file', default=None)
 
 doublet_parser.add_argument('--use_position_specific_error_rate', action='store_true', default=False)
 
