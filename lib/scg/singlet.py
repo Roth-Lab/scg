@@ -49,7 +49,9 @@ class VariationalBayesSingletGenotyper(object):
             
             self.gamma[data_type] = gamma_prior[data_type].copy()
         
-            self._init_G(data_type)
+        self.log_Z = np.log(np.random.random(size=(self.N, self.K)))
+        
+        self.log_Z = self.log_Z - np.expand_dims(log_sum_exp(self.log_Z, axis=1), axis=1) 
         
         self.lower_bound = [float('-inf')]
 
@@ -57,13 +59,6 @@ class VariationalBayesSingletGenotyper(object):
         
         self.converged = False
     
-    def _init_G(self, data_type):
-        G = np.random.random((self.S[data_type], self.K, self.M[data_type]))
-        
-        G = G / np.expand_dims(G.sum(axis=0), axis=0)
-        
-        self.log_G[data_type] = np.log(G)
-
     def get_e_log_epsilon(self, data_type):
         return compute_e_log_dirichlet(self.gamma[data_type])
 
@@ -89,12 +84,6 @@ class VariationalBayesSingletGenotyper(object):
     
     def fit(self, convergence_tolerance=1e-4, debug=False, num_iters=100):
         for i in range(num_iters):
-
-            self._update_Z()
-            
-            if debug:
-                print 'Z', self._diff_lower_bound()
-
             self._update_G()
             
             if debug:
@@ -109,6 +98,11 @@ class VariationalBayesSingletGenotyper(object):
             
             if debug:
                 print 'kappa', self._diff_lower_bound()
+            
+            self._update_Z()
+            
+            if debug:
+                print 'Z', self._diff_lower_bound()
             
             self.lower_bound.append(self._compute_lower_bound())
              
