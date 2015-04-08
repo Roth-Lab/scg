@@ -8,7 +8,9 @@ from scg.utils import compute_e_log_dirichlet, compute_e_log_q_dirichlet, comput
                       compute_e_log_q_discrete, get_indicator_matrix, safe_multiply
 
 class VariationalBayesSingletGenotyperPositionSpecific(object):
-    def __init__(self, gamma_prior, kappa_prior, G_prior, X):    
+    def __init__(self, gamma_prior, kappa_prior, G_prior, X, labels=None):
+        self.annealing = 1
+        
         self.K = len(kappa_prior)
         
         self.gamma_prior = gamma_prior
@@ -52,22 +54,25 @@ class VariationalBayesSingletGenotyperPositionSpecific(object):
             self.gamma[data_type] = self.gamma[data_type].reshape((self.S[data_type],
                                                                    self.T[data_type],
                                                                    self.M[data_type]))
-            
-            self._init_G(data_type)
         
+        if labels is None:
+            self.log_Z = np.log(np.random.random(size=(self.N, self.K)))
+        
+        else:
+            self.log_Z = np.zeros((self.N, self.K))
+            
+            for i, s in enumerate(range(len(set(labels)))):
+                self.log_Z[:, i] = (labels == s).astype(int)
+                
+        self.log_Z = self.log_Z - np.expand_dims(log_sum_exp(self.log_Z, axis=1), axis=1) 
+        
+    def _init_fit_params(self):
         self.lower_bound = [float('-inf')]
 
         self._debug_lower_bound = [float('-inf')]
         
         self.converged = False
-    
-    def _init_G(self, data_type):
-        G = np.random.random((self.S[data_type], self.K, self.M[data_type]))
         
-        G = G / np.expand_dims(G.sum(axis=0), axis=0)
-        
-        self.log_G[data_type] = np.log(G)
-
     def get_e_log_epsilon(self, data_type):
         e_log_epsilon = np.zeros((self.gamma[data_type].shape))
         
@@ -96,13 +101,26 @@ class VariationalBayesSingletGenotyperPositionSpecific(object):
     def Z(self):
         return np.exp(self.log_Z)
     
-    def fit(self, convergence_tolerance=1e-4, debug=False, num_iters=100):
-        for i in range(num_iters):
-
-            self._update_Z()
+    def fit_annealed(self, annealing_schedule, convergence_tolerance=1e-4, debug=False, num_iters=100):
+        for a in annealing_schedule:
+            self.annealing = a 
             
-            if debug:
-                print 'Z', self._diff_lower_bound()
+            print '#' * 100
+            print 'Annealing value: {0}'.format(a)
+            print '#' * 100
+            
+            self.fit(convergence_tolerance=convergence_tolerance, debug=debug, num_iters=num_iters)
+            
+            self.annealing = 1.0
+            
+            print '*' * 100
+            print self._compute_lower_bound()
+            print '*' * 100
+    
+    def fit(self, convergence_tolerance=1e-4, debug=False, num_iters=100):
+        self._init_fit_params()
+        
+        for i in range(num_iters):
 
             self._update_G()
             
@@ -118,10 +136,15 @@ class VariationalBayesSingletGenotyperPositionSpecific(object):
             
             if debug:
                 print 'kappa', self._diff_lower_bound()
+                        
+            self._update_Z()
+            
+            if debug:
+                print 'Z', self._diff_lower_bound()
             
             self.lower_bound.append(self._compute_lower_bound())
              
-            diff = (self.lower_bound[-1] - self.lower_bound[-2]) / np.abs(self.lower_bound[-1])
+            diff = (self.lower_bound[-1] - self.lower_bound[-2])  # / np.abs(self.lower_bound[-1])
              
             print i, self.lower_bound[-1], diff
              
@@ -161,6 +184,8 @@ class VariationalBayesSingletGenotyperPositionSpecific(object):
         # SxKxM
         log_G = np.log(G_prior)[:, np.newaxis, np.newaxis] + log_G
         
+        log_G = self.annealing * log_G
+        
         # KxM
         log_G_norm = log_sum_exp(log_G, axis=0)
         
@@ -172,7 +197,9 @@ class VariationalBayesSingletGenotyperPositionSpecific(object):
         
         for data_type in self.data_types:
             log_Z = log_Z + self._get_log_Z_d(data_type)
-    
+        
+        log_Z = self.annealing * log_Z    
+        
         log_Z_norm = np.logaddexp.reduce(log_Z, axis=1)
         
         log_Z = log_Z - log_Z_norm[:, np.newaxis]
@@ -196,13 +223,13 @@ class VariationalBayesSingletGenotyperPositionSpecific(object):
     
     def _update_gamma(self):
         for data_type in self.data_types:
-            self.gamma[data_type] = self.gamma_prior[data_type][:, :, np.newaxis] + self._get_gamma_data_term(data_type)
+            self.gamma[data_type] = self.annealing * (self.gamma_prior[data_type][:, :, np.newaxis] + self._get_gamma_data_term(data_type) - 1) + 1
     
     def _update_kappa(self):
-        self.kappa = self.kappa_prior + self._get_kappa_data_term()
+        self.kappa = self.annealing * (self.kappa_prior + self._get_kappa_data_term() - 1) + 1
 
     def _compute_lower_bound(self):
-        return self._compute_e_log_p() - self._compute_e_log_q()
+        return self._compute_e_log_p() - (1 / self.annealing) * self._compute_e_log_q()
     
     def _compute_e_log_p(self):
         gamma_prior = 0
@@ -318,23 +345,23 @@ if __name__ == '__main__':
     
     np.random.seed(0)
     
-    sim = get_default_dirichlet_mixture_sim()
+#     sim = get_default_dirichlet_mixture_sim()
 
-    v_dmm = []
-     
-    for i in range(40):
-        np.random.seed(i)
-        
-        model = VariationalBayesSingletGenotyperPositionSpecific(gamma_prior, kappa_prior, G_prior, sim['X'])
-     
-        model.fit(num_iters=100)
-     
-        Z = model.Z.argmax(axis=1)
-        
-        v_dmm.append(v_measure_score(sim['Z'], Z))    
-    
-    np.random.seed(0)
-    
+#     v_dmm = []
+#      
+#     for i in range(40):
+#         np.random.seed(i)
+#         
+#         model = VariationalBayesSingletGenotyperPositionSpecific(gamma_prior, kappa_prior, G_prior, sim['X'])
+#      
+#         model.fit(num_iters=100)
+#      
+#         Z = model.Z.argmax(axis=1)
+#         
+#         v_dmm.append(v_measure_score(sim['Z'], Z))    
+#     
+#     np.random.seed(0)
+#     
     sim = get_default_genotyper_sim()
 
     v_gen = []
@@ -344,10 +371,12 @@ if __name__ == '__main__':
         
         model = VariationalBayesSingletGenotyperPositionSpecific(gamma_prior, kappa_prior, G_prior, sim['X'])
      
-        model.fit(num_iters=100)
+        model.fit_annealed(reversed([1 / (2.0 ** x) for x in range(3)]), convergence_tolerance=1e-10, num_iters=100)
+#         model.fit(num_iters=100)
      
         Z = model.Z.argmax(axis=1)
         
         v_gen.append(v_measure_score(sim['Z'][0][sim['Y'] == 0], Z[sim['Y'] == 0]))
-         
-    print max(v_dmm), max(v_gen)
+    
+    print max(v_gen)     
+#     print max(v_dmm), max(v_gen)

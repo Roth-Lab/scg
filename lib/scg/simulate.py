@@ -96,9 +96,7 @@ def simualte_genotyper_data(alpha_true, gamma_true, kappa_true, G_prior, M, N, i
     
     return {'d' : d_true, 'e' : e_true, 'pi' : pi_true, 'G' : G_true, 'X' : data, 'Y' : Y_true, 'Z' : Z_true}
 
-def get_default_dirichlet_mixture_sim():
-    N = 100
-    
+def get_default_dirichlet_mixture_sim(N=100):
     K_true = 4
     
     M = {'snv' : 48, 'breakpoint' : 8}
@@ -109,9 +107,7 @@ def get_default_dirichlet_mixture_sim():
     
     return simulate_dirichlet_mixture_model_data(gamma_prior, kappa_prior, M, N)
 
-def get_default_genotyper_sim():
-    N = 100
-    
+def get_default_genotyper_sim(N=100):
     K_true = 4
     
     M = {'snv' : 48, 'breakpoint' : 8}
