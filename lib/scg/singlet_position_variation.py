@@ -56,14 +56,15 @@ class VariationalBayesSingletGenotyperPositionSpecific(object):
                                                                    self.M[data_type]))
         
         if labels is None:
-            self.log_Z = np.log(np.random.random(size=(self.N, self.K)))
+            labels = np.random.random(size=(self.N, self.K)).argmax(axis=1)
         
-        else:
-            self.log_Z = np.zeros((self.N, self.K))
-            
-            for i, s in enumerate(range(len(set(labels)))):
-                self.log_Z[:, i] = (labels == s).astype(int)
-                
+        self.log_Z = np.zeros((self.N, self.K))
+        
+        for i, s in enumerate(range(len(set(labels)))):
+            self.log_Z[:, i] = (labels == s).astype(int)
+        
+        self.log_Z = np.log(self.log_Z)
+        
         self.log_Z = self.log_Z - np.expand_dims(log_sum_exp(self.log_Z, axis=1), axis=1) 
         
     def _init_fit_params(self):
@@ -144,7 +145,7 @@ class VariationalBayesSingletGenotyperPositionSpecific(object):
             
             self.lower_bound.append(self._compute_lower_bound())
              
-            diff = (self.lower_bound[-1] - self.lower_bound[-2])  # / np.abs(self.lower_bound[-1])
+            diff = (self.lower_bound[-1] - self.lower_bound[-2]) / np.abs(self.lower_bound[-1])
              
             print i, self.lower_bound[-1], diff
              
