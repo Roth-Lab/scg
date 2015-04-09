@@ -5,15 +5,13 @@ Created on 2015-02-03
 '''
 from __future__ import division
 
-from scipy.misc import logsumexp as log_sum_exp
-
 import numpy as np
 
 from scg.utils import compute_e_log_dirichlet, compute_e_log_q_dirichlet, compute_e_log_p_dirichlet, \
-                      compute_e_log_q_discrete, get_indicator_matrix, safe_multiply
+                      compute_e_log_q_discrete, get_indicator_matrix, init_Z, log_space_normalise, safe_multiply
 
 class VariationalBayesDirichletMixtureModel(object):
-    def __init__(self, gamma_prior, kappa_prior, X):    
+    def __init__(self, gamma_prior, kappa_prior, X, init_labels=None):    
         self.K = len(kappa_prior)
         
         self.gamma_prior = gamma_prior
@@ -44,9 +42,7 @@ class VariationalBayesDirichletMixtureModel(object):
         
             self.X[data_type] = get_indicator_matrix(range(self.T[data_type]), X[data_type])
 
-        self.log_Z = np.log(np.random.random(size=(self.N, self.K)))
-        
-        self.log_Z = self.log_Z - np.expand_dims(log_sum_exp(self.log_Z, axis=1), axis=1) 
+        self.log_Z = init_Z(self.K, self.N, init_labels)
         
         self.lower_bound = [float('-inf')]
 
@@ -116,11 +112,7 @@ class VariationalBayesDirichletMixtureModel(object):
         for data_type in self.data_types:
             log_Z = log_Z + self._get_log_Z_d(data_type)
     
-        log_Z_norm = log_sum_exp(log_Z, axis=1)
-        
-        log_Z = log_Z - log_Z_norm[:, np.newaxis]
-        
-        self.log_Z = log_Z
+        self.log_Z = log_space_normalise(log_Z, axis=1)
     
     def _get_log_Z_d(self, data_type):
         e_log_mu = self.get_e_log_mu(data_type)
