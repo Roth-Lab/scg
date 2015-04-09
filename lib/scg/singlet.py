@@ -1,14 +1,12 @@
 from __future__ import division
 
-from scipy.misc import logsumexp as log_sum_exp
-
 import numpy as np
 
 from scg.utils import compute_e_log_dirichlet, compute_e_log_q_dirichlet, compute_e_log_p_dirichlet, \
-                      compute_e_log_q_discrete, get_indicator_matrix, safe_multiply
+                      compute_e_log_q_discrete, get_indicator_matrix, init_Z, log_space_normalise, safe_multiply
 
 class VariationalBayesSingletGenotyper(object):
-    def __init__(self, gamma_prior, kappa_prior, G_prior, X, labels=None):
+    def __init__(self, gamma_prior, kappa_prior, G_prior, X, init_labels=None):
         self.K = len(kappa_prior)
         
         self.gamma_prior = gamma_prior
@@ -49,17 +47,7 @@ class VariationalBayesSingletGenotyper(object):
             
             self._init_gamma(data_type)
         
-        if labels is None:
-            labels = np.random.random(size=(self.N, self.K)).argmax(axis=1)
-        
-        self.log_Z = np.zeros((self.N, self.K))
-        
-        for i, s in enumerate(range(len(set(labels)))):
-            self.log_Z[:, i] = (labels == s).astype(int)
-        
-        self.log_Z = np.log(self.log_Z + 1e-10)
-        
-        self.log_Z = self.log_Z - np.expand_dims(log_sum_exp(self.log_Z, axis=1), axis=1) 
+        self.log_Z = init_Z(self.K, self.N, init_labels)
         
         self.lower_bound = [float('-inf')]
 
@@ -158,11 +146,8 @@ class VariationalBayesSingletGenotyper(object):
         # SxKxM
         log_G = np.log(G_prior)[:, np.newaxis, np.newaxis] + log_G
         
-        # KxM
-        log_G_norm = log_sum_exp(log_G, axis=0)
-        
         # SxKxM
-        self.log_G[data_type] = log_G - log_G_norm[np.newaxis, :, :]
+        self.log_G[data_type] = log_space_normalise(log_G, axis=0)
         
     def _update_Z(self):
         log_Z = self.e_log_pi[np.newaxis, :]
@@ -170,11 +155,7 @@ class VariationalBayesSingletGenotyper(object):
         for data_type in self.data_types:
             log_Z = log_Z + self._get_log_Z_d(data_type)
     
-        log_Z_norm = np.logaddexp.reduce(log_Z, axis=1)
-        
-        log_Z = log_Z - log_Z_norm[:, np.newaxis]
-        
-        self.log_Z = log_Z
+        self.log_Z = log_space_normalise(log_Z, axis=1)
     
     def _get_log_Z_d(self, data_type):
         e_log_epsilon = self.get_e_log_epsilon(data_type)
