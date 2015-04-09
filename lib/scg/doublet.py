@@ -10,10 +10,10 @@ from scipy.misc import logsumexp as log_sum_exp
 import numpy as np
 
 from scg.utils import compute_e_log_dirichlet, compute_e_log_p_dirichlet, compute_e_log_q_dirichlet, \
-                      compute_e_log_q_discrete, safe_multiply, get_indicator_matrix
+                      compute_e_log_q_discrete, get_indicator_matrix, safe_multiply
 
 class VariationalBayesDoubletGenotyper(object):
-    def __init__(self, alpha_prior, gamma_prior, kappa_prior, G_prior, state_map, X):    
+    def __init__(self, alpha_prior, gamma_prior, kappa_prior, G_prior, state_map, X, init_labels=None):    
         self.K = len(kappa_prior)
         
         self.alpha_prior = alpha_prior
@@ -150,36 +150,31 @@ class VariationalBayesDoubletGenotyper(object):
     
     def fit(self, convergence_tolerance=1e-4, debug=False, num_iters=100):
         for i in range(num_iters):
-
+            
             self._update_Z()
             
             if debug:
-                print 'a', self._diff_lower_bound()
+                print 'Z', self._diff_lower_bound()
 
             self._update_G()
             
             if debug:
-                print 'c', self._diff_lower_bound()
+                print 'G', self._diff_lower_bound()
             
             self._update_gamma()
             
             if debug:
-                print 'd', self._diff_lower_bound()
+                print 'gamma', self._diff_lower_bound()
             
             self._update_kappa()
             
             if debug:
-                print 'e', self._diff_lower_bound()
+                print 'kappa', self._diff_lower_bound()
             
             self._update_alpha()
             
             if debug:
-                print 'f', self._diff_lower_bound()
-    
-                print self.alpha
-                   
-                print sum((self.kappa / self.kappa.sum()) > 1e-2)
-
+                print 'alpha', self._diff_lower_bound()           
             
             self.lower_bound.append(self._compute_lower_bound())
              
