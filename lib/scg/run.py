@@ -15,7 +15,6 @@ from scg.doublet import VariationalBayesDoubletGenotyper
 from scg.doublet_position_variation import VariationalBayesDoubletGenotyperPositionSpecific
 from scg.doublet_position_sample_variation import VariationalBayesDoubletGenotyperPositionSampleSpecific
 from scg.singlet import VariationalBayesSingletGenotyper
-from scg.singlet_position_variation import VariationalBayesSingletGenotyperPositionSpecific
 
 def run_doublet_analysis(args):
     if args.seed is not None:
@@ -83,17 +82,12 @@ def run_singlet_analysis(args):
         np.random.seed(args.seed)
        
     cell_ids, data, event_ids, priors = load_data(args.config_file)
-
-    if args.use_position_specific_error_rate:
-        model_class = VariationalBayesSingletGenotyperPositionSpecific
     
-    else:
-        model_class = VariationalBayesSingletGenotyper
-    
-    model = model_class(priors['gamma'],
-                        priors['kappa'],
-                        priors['G'],
-                        data)
+    model = VariationalBayesSingletGenotyper(priors['gamma'],
+                                             priors['kappa'],
+                                             priors['G'],
+                                             data,
+                                             use_position_specific_gamma=args.use_position_specific_error_rate)
         
     model.fit(convergence_tolerance=args.convergence_tolerance, num_iters=args.max_num_iters)
     
