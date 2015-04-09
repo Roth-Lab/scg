@@ -6,7 +6,9 @@ from scg.utils import compute_e_log_dirichlet, compute_e_log_q_dirichlet, comput
                       compute_e_log_q_discrete, get_indicator_matrix, init_Z, log_space_normalise, safe_multiply
 
 class VariationalBayesSingletGenotyper(object):
-    def __init__(self, gamma_prior, kappa_prior, G_prior, X, init_labels=None):
+    def __init__(self, gamma_prior, kappa_prior, G_prior, X, init_labels=None, use_position_specific_gamma=False):
+        self.use_position_specific_gamma = use_position_specific_gamma
+        
         self.K = len(kappa_prior)
         
         self.gamma_prior = gamma_prior
@@ -56,10 +58,27 @@ class VariationalBayesSingletGenotyper(object):
         self.converged = False
     
     def _init_gamma(self, data_type):
-        self.gamma[data_type] = self.gamma_prior[data_type].copy()
+        if self.use_position_specific_gamma:
+            self.gamma[data_type] = np.repeat(self.gamma_prior[data_type], self.M[data_type])
+            
+            self.gamma[data_type] = self.gamma[data_type].reshape((self.S[data_type],
+                                                                   self.T[data_type],
+                                                                   self.M[data_type]))
+        
+        else:
+            self.gamma[data_type] = self.gamma_prior[data_type].copy()
     
     def get_e_log_epsilon(self, data_type):
-        return compute_e_log_dirichlet(self.gamma[data_type])
+        if self.use_position_specific_gamma:
+            e_log_epsilon = np.zeros((self.gamma[data_type].shape))
+            
+            for m in range(self.M[data_type]):
+                e_log_epsilon[:, :, m] = compute_e_log_dirichlet(self.gamma[data_type][:, :, m])
+            
+        else:
+            e_log_epsilon = compute_e_log_dirichlet(self.gamma[data_type])
+        
+        return e_log_epsilon
 
     def get_G(self, data_type):
         return np.exp(self.log_G[data_type])
@@ -129,19 +148,25 @@ class VariationalBayesSingletGenotyper(object):
         for data_type in self.data_types:
             self._update_G_d(data_type)
     
-    def _update_G_d(self, data_type):
+    def _update_G_d(self, data_type):        
+        G_prior = self.G_prior[data_type]
+        
         X = self.X[data_type]
         
         Z = self.Z
         
         e_log_epsilon = self.get_e_log_epsilon(data_type)
         
-        G_prior = self.G_prior[data_type]
+        if self.use_position_specific_gamma:
+            e_log_epsilon = e_log_epsilon[:, :, np.newaxis, np.newaxis, :]
+            
+        else:
+            e_log_epsilon = e_log_epsilon[:, :, np.newaxis, np.newaxis, np.newaxis]
         
         log_G = np.einsum('stnkm, stnkm, stnkm -> skm',
                           X[np.newaxis, :, :, np.newaxis, :],
                           Z[np.newaxis, np.newaxis, :, :, np.newaxis],
-                          e_log_epsilon[:, :, np.newaxis, np.newaxis, np.newaxis])
+                          e_log_epsilon)
 
         # SxKxM
         log_G = np.log(G_prior)[:, np.newaxis, np.newaxis] + log_G
@@ -158,22 +183,34 @@ class VariationalBayesSingletGenotyper(object):
         self.log_Z = log_space_normalise(log_Z, axis=1)
     
     def _get_log_Z_d(self, data_type):
-        e_log_epsilon = self.get_e_log_epsilon(data_type)
-        
         G = self.get_G(data_type)
         
         X = self.X[data_type]
+                  
+        e_log_epsilon = self.get_e_log_epsilon(data_type)
         
+        if self.use_position_specific_gamma:
+            e_log_epsilon = e_log_epsilon[:, :, np.newaxis, np.newaxis, :]
+            
+        else:
+            e_log_epsilon = e_log_epsilon[:, :, np.newaxis, np.newaxis, np.newaxis]
+                
         log_Z = np.einsum('stnkm, stnkm, stnkm -> nk',
                           G[:, np.newaxis, np.newaxis, :, :],
                           X[np.newaxis, :, :, np.newaxis, :],
-                          e_log_epsilon[:, :, np.newaxis, np.newaxis, np.newaxis])
+                          e_log_epsilon)
         
         return log_Z
     
     def _update_gamma(self):
         for data_type in self.data_types:
-            self.gamma[data_type] = self.gamma_prior[data_type] + self._get_gamma_data_term(data_type)
+            if self.use_position_specific_gamma:
+                prior = self.gamma_prior[data_type][:, :, np.newaxis]
+            
+            else:
+                prior = self.gamma_prior[data_type]
+            
+            self.gamma[data_type] = prior + self._get_gamma_data_term(data_type)
     
     def _update_kappa(self):
         self.kappa = self.kappa_prior + self._get_kappa_data_term()
@@ -204,7 +241,12 @@ class VariationalBayesSingletGenotyper(object):
         log_p_posterior = 0
         
         for data_type in self.data_types:
-            log_p_prior += sum([compute_e_log_p_dirichlet(x, y) for x, y in zip(self.gamma[data_type], self.gamma_prior[data_type])])
+            if self.use_position_specific_gamma:
+                for m in range(self.M[data_type]):
+                    log_p_prior += sum([compute_e_log_p_dirichlet(x, y) for x, y in zip(self.gamma[data_type][:, :, m], self.gamma_prior[data_type])])
+            
+            else:
+                log_p_prior += sum([compute_e_log_p_dirichlet(x, y) for x, y in zip(self.gamma[data_type], self.gamma_prior[data_type])])
     
             log_p_posterior += self._compute_e_log_p_gamma_posterior(data_type)
         
@@ -214,8 +256,21 @@ class VariationalBayesSingletGenotyper(object):
         return np.sum(safe_multiply(self.e_log_pi, self._get_kappa_data_term()))
     
     def _compute_e_log_p_gamma_posterior(self, data_type):
-        return np.sum(safe_multiply(self.get_e_log_epsilon(data_type), self._get_gamma_data_term(data_type)))
-    
+        e_log_epsilon = self.get_e_log_epsilon(data_type)
+        
+        data_term = self._get_gamma_data_term(data_type)
+        
+        if self.use_position_specific_gamma:
+            log_p = 0
+            
+            for m in range(self.M[data_type]):    
+                log_p += np.sum(safe_multiply(e_log_epsilon[:, :, m], data_term[:, :, m]))
+        
+        else:
+            log_p = np.sum(safe_multiply(data_term, e_log_epsilon))
+        
+        return log_p
+
     def _compute_log_p_G(self, data_type):
         return np.sum(self.G_prior[data_type] * self.get_G(data_type).sum(axis=(1, 2)))
             
@@ -240,7 +295,12 @@ class VariationalBayesSingletGenotyper(object):
         log_q = 0
         
         for data_type in self.data_types:
-            log_q += sum([compute_e_log_q_dirichlet(x) for x in self.gamma[data_type]])
+            if self.use_position_specific_gamma:
+                for m in range(self.M[data_type]):
+                    log_q += sum([compute_e_log_q_dirichlet(x)  for x in self.gamma[data_type][:, :, m]])
+            
+            else:
+                log_q += sum([compute_e_log_q_dirichlet(x) for x in self.gamma[data_type]])
         
         return log_q
         
@@ -252,8 +312,13 @@ class VariationalBayesSingletGenotyper(object):
         # SxNxKxM
         data_term = np.exp(self.log_Z[np.newaxis, :, :, np.newaxis] + log_G[:, np.newaxis, :, :])
 
-        # SxTxM
-        return np.einsum('stnkm, stnkm -> st', 
+        if self.use_position_specific_gamma:
+            out_dim = 'stm'
+        
+        else:
+            out_dim = 'st'
+        
+        return np.einsum('stnkm, stnkm -> {0}'.format(out_dim), 
                          data_term[:, np.newaxis, :, :, :], 
                          X[np.newaxis, :, :, np.newaxis, :])
     
@@ -302,7 +367,7 @@ if __name__ == '__main__':
     for i in range(10):
         np.random.seed(i)
         
-        model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, sim['X'])
+        model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, sim['X'], use_position_specific_gamma=True)
      
         model.fit(num_iters=100)
      
@@ -319,7 +384,7 @@ if __name__ == '__main__':
     for i in range(10):
         np.random.seed(i)
         
-        model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, sim['X'])
+        model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, sim['X'], use_position_specific_gamma=True)
      
         model.fit(num_iters=100)
      
