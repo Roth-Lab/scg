@@ -5,6 +5,7 @@ Created on 2015-01-23
 '''
 from __future__ import division
 
+from scipy.misc import logsumexp as log_sum_exp
 from scipy.special import gammaln as log_gamma, psi
 
 import numpy as np
@@ -39,3 +40,19 @@ def compute_e_log_q_discrete(log_x):
 
 def safe_multiply(x, y):
     return np.sign(x) * np.sign(y) * np.exp(np.log(np.abs(x)) + np.log(np.abs(y)))
+
+def log_space_normalise(log_X, axis=0):
+    return log_X - np.expand_dims(log_sum_exp(log_X, axis=axis), axis=axis) 
+    
+def init_Z(K, N, labels):
+    if labels is None:
+            labels = np.random.random(size=(N, K)).argmax(axis=1)
+        
+    log_Z = np.zeros((N, K))
+    
+    for i, s in enumerate(range(len(set(labels)))):
+        log_Z[:, i] = (labels == s).astype(int)
+    
+    log_Z = np.log(log_Z + 1e-10)
+    
+    return log_space_normalise(log_Z, axis=1)
