@@ -11,3 +11,5 @@ syntax: regexp
 ^dist$
 syntax: regexp
 ^build$
+syntax: regexp
+^examples/xenograft$
