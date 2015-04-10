@@ -38,22 +38,27 @@ analysis_parser.add_argument('--seed', default=None, type=int,
                              chosen.''')
 
 #---------------------------------------------------------------------------------------------------------------------- 
-doublet_parser = subparsers.add_parser('run_doublet_model', parents=[analysis_parser],
+genotyper_parser = argparse.ArgumentParser(add_help=False)
+
+
+genotyper_parser.add_argument('--use_position_specific_error_rate', action='store_true', default=False,
+                              help='''If an error rate will be estimated for each position.''')
+
+genotyper_parser.add_argument('--samples_file', default=None,
+                              help='''Path mapping cells to samples. If set each sample will have a separate mixing
+                              proportion.''')
+
+#---------------------------------------------------------------------------------------------------------------------- 
+doublet_parser = subparsers.add_parser('run_doublet_model', parents=[analysis_parser, genotyper_parser],
                                        help='''Analyse single cell data using the single cell genotyper model accounting for doublets.''')
 
 doublet_parser.add_argument('--state_map_file', required=True)
 
-doublet_parser.add_argument('--sample_file', default=None)
-
-doublet_parser.add_argument('--use_position_specific_error_rate', action='store_true', default=False)
-
 doublet_parser.set_defaults(func=run_doublet_analysis)
 
 #---------------------------------------------------------------------------------------------------------------------- 
-singlet_parser = subparsers.add_parser('run_singlet_model', parents=[analysis_parser],
+singlet_parser = subparsers.add_parser('run_singlet_model', parents=[analysis_parser, genotyper_parser],
                                        help='''Analyse single cell data using the single cell genotyper model.''')
-
-singlet_parser.add_argument('--use_position_specific_error_rate', action='store_true', default=False)
 
 singlet_parser.set_defaults(func=run_singlet_analysis)
 
