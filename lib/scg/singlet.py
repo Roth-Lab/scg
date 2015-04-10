@@ -364,10 +364,14 @@ if __name__ == '__main__':
 
     v_dmm = []
      
-    for i in range(10):
+    for i in range(2):
         np.random.seed(i)
         
-        model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, sim['X'], use_position_specific_gamma=True)
+        model = VariationalBayesSingletGenotyper(gamma_prior, 
+                                                 kappa_prior, 
+                                                 G_prior, 
+                                                 sim['X'], 
+                                                 use_position_specific_gamma=True)
      
         model.fit(num_iters=100)
      
@@ -381,10 +385,13 @@ if __name__ == '__main__':
 
     v_gen = []
      
-    for i in range(10):
+    for i in range(2):
         np.random.seed(i)
         
-        model = VariationalBayesSingletGenotyper(gamma_prior, kappa_prior, G_prior, sim['X'], use_position_specific_gamma=True)
+        model = VariationalBayesSingletGenotyper(gamma_prior, 
+                                                 kappa_prior, 
+                                                 G_prior, 
+                                                 sim['X'])
      
         model.fit(num_iters=100)
      
