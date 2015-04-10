@@ -197,33 +197,45 @@ class VariationalBayesDoubletGenotyper(object):
             self._update_Z()
             
             if debug:
-                print 'Z', self._diff_lower_bound()
-
+                self._check_lower_bound_increase('Z')
+            
+            g_old = self._compute_lower_bound()
+            
             self._update_G()
             
+            g_new = self._compute_lower_bound()
+            
+            g_diff = g_new - g_old
+            
             if debug:
-                print 'G', self._diff_lower_bound()
+                self._check_lower_bound_increase('G')
             
             self._update_gamma()
             
             if debug:
-                print 'gamma', self._diff_lower_bound()
+                self._check_lower_bound_increase('gamma')
             
             self._update_kappa()
             
             if debug:
-                print 'kappa', self._diff_lower_bound()
+                self._check_lower_bound_increase('kappa')
             
             self._update_alpha()
             
             if debug:
-                print 'alpha', self._diff_lower_bound()           
+                self._check_lower_bound_increase('alpha')         
             
             self.lower_bound.append(self._compute_lower_bound())
              
             diff = (self.lower_bound[-1] - self.lower_bound[-2]) / np.abs(self.lower_bound[-1])
              
             print i, self.lower_bound[-1], diff
+            
+            if (diff < 0) and (g_diff < 0):   
+                diff = diff + abs(g_diff)
+                
+                if diff > 0:
+                    print 'Update of G decreased lower bound. Ignoring this.'
              
             if abs(diff) < convergence_tolerance:
                 print 'Converged'
@@ -668,16 +680,13 @@ class VariationalBayesDoubletGenotyper(object):
 
         return singlet_term + doublet_term
 
-    def _diff_lower_bound(self):
+    def _check_lower_bound_increase(self, variable):
         self._debug_lower_bound.append(self._compute_lower_bound())
         
         diff = (self._debug_lower_bound[-1] - self._debug_lower_bound[-2]) / np.abs(self._debug_lower_bound[-1])
         
-        if diff < 0:
-            print 'Bound decreased',
-#             raise Exception(diff)
-        
-        return diff
+        if diff < 0:                
+            print 'Bound decreased by {0} when updating {1}.'.format(diff, variable)
 
 
 if __name__ == '__main__':
@@ -693,11 +702,11 @@ if __name__ == '__main__':
                                                  samples=samples,
                                                  use_position_specific_gamma=use_position_specific_gamma)
  
-        model.fit(num_iters=100)
+        model.fit(debug=False, num_iters=100)
         
         print model.gamma['snv'].shape, model.kappa.keys()
     
-    from simulate import get_default_genotyper_sim
+    from simulate import get_default_dirichlet_mixture_sim
     
     np.seterr(all='warn')
 
@@ -729,7 +738,7 @@ if __name__ == '__main__':
     
     np.random.seed(0)
     
-    sim = get_default_genotyper_sim()
+    sim = get_default_dirichlet_mixture_sim()
     
     samples = pd.Series(['a' for _ in range(30)] + ['b' for _ in range(70)])
     
