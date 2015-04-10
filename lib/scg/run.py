@@ -12,8 +12,6 @@ import pandas as pd
 import yaml
 
 from scg.doublet import VariationalBayesDoubletGenotyper
-from scg.doublet_position_variation import VariationalBayesDoubletGenotyperPositionSpecific
-from scg.doublet_position_sample_variation import VariationalBayesDoubletGenotyperPositionSampleSpecific
 from scg.singlet import VariationalBayesSingletGenotyper
 
 def run_doublet_analysis(args):
@@ -21,46 +19,21 @@ def run_doublet_analysis(args):
         np.random.seed(args.seed)
        
     cell_ids, data, event_ids, priors = load_data(args.config_file)
+    
+    samples = load_samples(cell_ids, args.samples_file)
 
     with open(args.state_map_file) as fh:
         state_map = yaml.load(fh)
     
-    if args.sample_file is not None:
-        model_class = VariationalBayesDoubletGenotyperPositionSampleSpecific
-        
-        samples = pd.read_csv(args.sample_file, compression='gzip', index_col='cell_id', sep='\t')
-        
-        if not set(samples.index) == set(cell_ids):
-            raise Exception('Samples file must contain all entries from the data files.')
-        
-        samples = samples.loc[cell_ids]
-        
-        model = model_class(priors['alpha'],
-                            priors['gamma'],
-                            priors['kappa'],
-                            priors['G'],
-                            samples['sample'],
-                            state_map,
-                            data)
-        
-        print 'Number of samples: {0}'.format(len(model.kappa))
-        
-        args.use_position_specific_error_rate = True
+    model = VariationalBayesDoubletGenotyper(priors['alpha'],
+                                             priors['gamma'],
+                                             priors['kappa'],
+                                             priors['G'],
+                                             state_map,
+                                             data,
+                                             samples=samples,
+                                             use_position_specific_gamma=args.use_position_specific_error_rate) 
     
-    else:
-        if args.use_position_specific_error_rate:
-            model_class = VariationalBayesDoubletGenotyperPositionSpecific
-        
-        else:
-            model_class = VariationalBayesDoubletGenotyper
-        
-        model = model_class(priors['alpha'],
-                            priors['gamma'],
-                            priors['kappa'],
-                            priors['G'],
-                            state_map,
-                            data) 
-
     model.fit(convergence_tolerance=args.convergence_tolerance, num_iters=args.max_num_iters)
     
     if args.lower_bound_file is not None:
@@ -83,10 +56,13 @@ def run_singlet_analysis(args):
        
     cell_ids, data, event_ids, priors = load_data(args.config_file)
     
+    samples = load_samples(cell_ids, args.samples_file)
+    
     model = VariationalBayesSingletGenotyper(priors['gamma'],
                                              priors['kappa'],
                                              priors['G'],
                                              data,
+                                             samples=samples,
                                              use_position_specific_gamma=args.use_position_specific_error_rate)
         
     model.fit(convergence_tolerance=args.convergence_tolerance, num_iters=args.max_num_iters)
@@ -151,6 +127,24 @@ def _load_data_frame(file_name):
     
     return df
 
+def load_samples(cell_ids, file_name):
+    if file_name is not None:
+        samples = pd.read_csv(file_name, compression='gzip', index_col='cell_id', sep='\t')
+        
+        if not set(samples.index) == set(cell_ids):
+            raise Exception('Samples file must contain all entries from the data files.')
+        
+        samples = samples.loc[cell_ids, 'sample']
+        
+        print 'Number of samples: {0}'.format(samples.nunique())
+    
+    else:
+        samples = None
+        
+        print 'No samples file supplied. All cells assumed to come from same sample.'
+    
+    return samples
+
 def write_cluster_posteriors(cell_ids, Z, out_dir):
     file_name = os.path.join(out_dir, 'cluster_posteriors.tsv.gz')
 
@@ -207,15 +201,10 @@ def write_params(model, out_dir, event_ids, position_specific_error):
               'converged' : model.converged
               }
     
-    if isinstance(model.kappa, dict):
-        params['kappa'] = {}
-        
-        for sample in model.kappa:
-            params['kappa'][sample] = [float(x) for x in model.kappa[sample]]
-            
-        
-    else:
-        params['kappa'] = [float(x) for x in model.kappa]
+    params['kappa'] = {}
+    
+    for sample in model.kappa:
+        params['kappa'][str(sample)] = [float(x) for x in model.kappa[sample]]
     
     params['gamma'] = {}
     
