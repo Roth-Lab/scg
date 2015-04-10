@@ -1,5 +1,13 @@
 # Versions
 
+# 0.3.0
+
+- Refactored code to be shared between models
+
+- Added ability to input sample of origin for each cell to obtain sample specific clone proportions
+
+- Add a work around for numerical issues (or a bug) in the doublet model
+
 ## 0.2.3
 
 - Minor bug fix.
