@@ -14,7 +14,16 @@ from scg.utils import compute_e_log_dirichlet, compute_e_log_p_dirichlet, comput
                       compute_e_log_q_discrete, get_indicator_matrix, safe_multiply
 
 class VariationalBayesDoubletGenotyper(object):
-    def __init__(self, alpha_prior, gamma_prior, kappa_prior, G_prior, state_map, X, init_labels=None, samples=None, use_position_specific_gamma=False):   
+    def __init__(self, 
+                 alpha_prior, 
+                 gamma_prior, 
+                 kappa_prior, 
+                 G_prior, 
+                 state_map, 
+                 X, 
+                 init_labels=None, 
+                 samples=None, 
+                 use_position_specific_gamma=False):   
         
         self.K = len(kappa_prior)
         
