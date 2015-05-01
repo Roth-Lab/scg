@@ -1,5 +1,8 @@
 from __future__ import division
 
+from scipy.special import psi, polygamma
+from scipy.optimize import brentq, newton
+
 import numpy as np
 import pandas as pd
 
@@ -122,6 +125,7 @@ class VariationalBayesSingletGenotyper(object):
     
     def fit(self, convergence_tolerance=1e-4, debug=False, num_iters=100):
         for i in range(num_iters):
+            print self.kappa_prior[0]
 
             self._update_G()
             
@@ -148,7 +152,9 @@ class VariationalBayesSingletGenotyper(object):
             diff = (self.lower_bound[-1] - self.lower_bound[-2]) / np.abs(self.lower_bound[-1])
              
             print i, self.lower_bound[-1], diff
-             
+            
+            self.kappa_prior = np.ones(self.K) * brentq(self._compute_lower_bound_derivative_wrt_kappa, 1e-10, 1e6)
+            
             if abs(diff) < convergence_tolerance:
                 print 'Converged'
                 
@@ -374,13 +380,28 @@ class VariationalBayesSingletGenotyper(object):
         
         return diff
     
+    def _compute_lower_bound_derivative_wrt_kappa(self, kappa):
+        d = 0
+        
+        K = self.K
+            
+        for sample in self.samples:
+            kappa_bar = np.ones(K) * kappa + self._get_kappa_data_term(sample)
+            
+            d += K * psi(K * kappa) - K * psi(kappa) + \
+                 psi(kappa_bar).sum() - K * psi(kappa_bar.sum()) + \
+                 np.sum((kappa - kappa_bar) * polygamma(1, kappa_bar)) - \
+                 np.sum((kappa - kappa_bar) * polygamma(1, kappa_bar.sum()))
+
+        return d
+  
 if __name__ == '__main__':
     def test_run(samples, use_position_specific_gamma):
         np.random.seed(0)
     
-        model = VariationalBayesSingletGenotyper(gamma_prior, 
-                                                 kappa_prior, 
-                                                 G_prior, 
+        model = VariationalBayesSingletGenotyper(gamma_prior,
+                                                 kappa_prior,
+                                                 G_prior,
                                                  sim['X'],
                                                  samples=samples,
                                                  use_position_specific_gamma=use_position_specific_gamma)
@@ -430,3 +451,5 @@ if __name__ == '__main__':
     print 'Sample position specific'
     
     test_run(samples, True)
+    
+    
