@@ -5,7 +5,10 @@ Created on 2015-01-09
 '''
 from __future__ import division
 
+
 from scipy.misc import logsumexp as log_sum_exp
+from scipy.special import psi, polygamma
+from scipy.optimize import brentq, newton
 
 import numpy as np
 import pandas as pd
@@ -230,6 +233,10 @@ class VariationalBayesDoubletGenotyper(object):
             diff = (self.lower_bound[-1] - self.lower_bound[-2]) / np.abs(self.lower_bound[-1])
              
             print i, self.lower_bound[-1], diff
+                               
+            self.kappa_prior = np.ones(self.K) * brentq(self._compute_lower_bound_derivative_wrt_kappa, 1e-10, 1e6)
+            
+            print self.kappa_prior[0]
             
             if (diff < 0) and (g_diff < 0):   
                 diff = diff + abs(g_diff)
@@ -688,7 +695,21 @@ class VariationalBayesDoubletGenotyper(object):
         if diff < 0:                
             print 'Bound decreased by {0} when updating {1}.'.format(diff, variable)
 
-
+    def _compute_lower_bound_derivative_wrt_kappa(self, kappa):
+        d = 0
+        
+        K = self.K
+        
+        for sample in self.samples:
+            kappa_bar = np.ones(K) * kappa + self._get_kappa_data_term(sample)
+            
+            d += K * psi(K * kappa) - K * psi(kappa) + \
+                 psi(kappa_bar).sum() - K * psi(kappa_bar.sum()) + \
+                 np.sum((kappa - kappa_bar) * polygamma(1, kappa_bar)) - \
+                 np.sum((kappa - kappa_bar) * polygamma(1, kappa_bar.sum()))
+        
+        return d
+    
 if __name__ == '__main__':
     def test_run(samples, use_position_specific_gamma):
         np.random.seed(0)
@@ -706,7 +727,7 @@ if __name__ == '__main__':
         
         print model.gamma['snv'].shape, model.kappa.keys()
     
-    from simulate import get_default_dirichlet_mixture_sim
+    from simulate import get_default_dirichlet_mixture_sim, get_default_genotyper_sim
     
     np.seterr(all='warn')
 
@@ -727,7 +748,7 @@ if __name__ == '__main__':
                    'breakpoint' : np.array([[90, 10],
                                             [1, 99]])}
     
-    kappa_prior = np.ones(20)
+    kappa_prior = np.ones(4)
     
     G_prior = {}
     
@@ -738,7 +759,7 @@ if __name__ == '__main__':
     
     np.random.seed(0)
     
-    sim = get_default_dirichlet_mixture_sim()
+    sim = get_default_genotyper_sim()
     
     samples = pd.Series(['a' for _ in range(30)] + ['b' for _ in range(70)])
     
