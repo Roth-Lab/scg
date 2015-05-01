@@ -13,12 +13,15 @@ import yaml
 
 from scg.doublet import VariationalBayesDoubletGenotyper
 from scg.singlet import VariationalBayesSingletGenotyper
+from scg.utils import load_labels
 
 def run_doublet_analysis(args):
     if args.seed is not None:
         np.random.seed(args.seed)
        
     cell_ids, data, event_ids, priors = load_data(args.config_file)
+    
+    labels = load_labels(cell_ids, args.labels_file)
     
     samples = load_samples(cell_ids, args.samples_file)
 
@@ -31,6 +34,7 @@ def run_doublet_analysis(args):
                                              priors['G'],
                                              state_map,
                                              data,
+                                             init_labels=labels,
                                              samples=samples,
                                              use_position_specific_gamma=args.use_position_specific_error_rate) 
     
@@ -55,13 +59,16 @@ def run_singlet_analysis(args):
         np.random.seed(args.seed)
        
     cell_ids, data, event_ids, priors = load_data(args.config_file)
-    
+
+    labels = load_labels(cell_ids, args.labels_file)
+
     samples = load_samples(cell_ids, args.samples_file)
     
     model = VariationalBayesSingletGenotyper(priors['gamma'],
                                              priors['kappa'],
                                              priors['G'],
                                              data,
+                                             init_labels=labels,
                                              samples=samples,
                                              use_position_specific_gamma=args.use_position_specific_error_rate)
         

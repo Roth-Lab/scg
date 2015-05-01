@@ -12,14 +12,17 @@ import pandas as pd
 import yaml
 
 from scg.dirichlet import VariationalBayesDirichletMixtureModel
+from scg.utils import load_labels
 
 def run_dirichlet_mixture_model_analysis(args):
     if args.seed is not None:
         np.random.seed(args.seed)
        
     cell_ids, data, event_ids, priors = load_data(args.config_file)
+    
+    labels = load_labels(cell_ids, args.labels_file)
 
-    model = VariationalBayesDirichletMixtureModel(priors['gamma'], priors['kappa'], data)
+    model = VariationalBayesDirichletMixtureModel(priors['gamma'], priors['kappa'], data, init_labels=labels)
         
     model.fit(convergence_tolerance=args.convergence_tolerance, num_iters=args.max_num_iters)
     

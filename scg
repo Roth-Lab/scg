@@ -11,7 +11,7 @@ import argparse
 
 parser = argparse.ArgumentParser(prog='Single Cell Genotyper')
 
-parser.add_argument('--version', action='version', version='0.3.0')
+parser.add_argument('--version', action='version', version='0.3.1')
 
 subparsers = parser.add_subparsers()
 
@@ -37,9 +37,11 @@ analysis_parser.add_argument('--seed', default=None, type=int,
                              help='''Set random seed so results can be reproduced. By default a random seed is
                              chosen.''')
 
+analysis_parser.add_argument('--labels_file', default=None,
+                             help='''Path of file with initial labels to use.''')
+
 #---------------------------------------------------------------------------------------------------------------------- 
 genotyper_parser = argparse.ArgumentParser(add_help=False)
-
 
 genotyper_parser.add_argument('--use_position_specific_error_rate', action='store_true', default=False,
                               help='''If an error rate will be estimated for each position.''')

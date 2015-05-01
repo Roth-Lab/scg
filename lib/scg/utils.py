@@ -9,6 +9,7 @@ from scipy.misc import logsumexp as log_sum_exp
 from scipy.special import gammaln as log_gamma, psi
 
 import numpy as np
+import pandas as pd
 
 def compute_e_log_dirichlet(x):
     return psi(x) - psi(np.expand_dims(x.sum(axis=-1), axis=-1))
@@ -46,7 +47,7 @@ def log_space_normalise(log_X, axis=0):
     
 def init_Z(K, N, labels):
     if labels is None:
-            labels = np.random.random(size=(N, K)).argmax(axis=1)
+        labels = np.random.random(size=(N, K)).argmax(axis=1)
         
     log_Z = np.zeros((N, K))
     
@@ -56,3 +57,14 @@ def init_Z(K, N, labels):
     log_Z = np.log(log_Z + 1e-10)
     
     return log_space_normalise(log_Z, axis=1)
+
+def load_labels(cell_ids, file_name):
+    if file_name is None:
+        labels = None
+    
+    else:
+        labels = pd.read_csv(file_name, compression='gzip', index_col='cell_id', sep='\t')
+        
+        labels = labels.loc[cell_ids, 'cluster']
+    
+    return labels

@@ -1,5 +1,9 @@
 # Versions
 
+# 0.3.1
+
+- Added ability to pass initial labels for cells.
+
 # 0.3.0
 
 - Refactored code to be shared between models
