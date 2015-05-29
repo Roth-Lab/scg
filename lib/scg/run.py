@@ -32,11 +32,11 @@ def run_doublet_analysis(args):
                                              priors['gamma'],
                                              priors['kappa'],
                                              priors['G'],
+                                             priors['position_specific_error_states'],
                                              state_map,
                                              data,
                                              init_labels=labels,
-                                             samples=samples,
-                                             use_position_specific_gamma=args.use_position_specific_error_rate) 
+                                             samples=samples) 
     
     model.fit(convergence_tolerance=args.convergence_tolerance, num_iters=args.max_num_iters)
     
@@ -52,7 +52,7 @@ def run_doublet_analysis(args):
     
         write_genotype_posteriors(event_ids, model.G, args.out_dir)
             
-        write_params(model, args.out_dir, event_ids, position_specific_error=args.use_position_specific_error_rate)
+        write_params(model, args.out_dir, event_ids)
 
 def run_singlet_analysis(args):
     if args.seed is not None:
@@ -94,7 +94,7 @@ def load_data(file_name):
     
     event_ids = {}
     
-    priors = {'gamma' : {}, 'G' : {}}
+    priors = {'gamma' : {}, 'G' : {}, 'position_specific_error_states' : {}}
 
     for data_type in config['data']:
         data[data_type] = _load_data_frame(config['data'][data_type]['file'])
@@ -108,6 +108,12 @@ def load_data(file_name):
         cell_ids.append(data[data_type].index)
         
         event_ids[data_type] = list(data[data_type].columns)
+        
+        if 'position_specific_error_states' in config['data'][data_type]:
+            priors['position_specific_error_states'][data_type] = [int(x) for x in config['data'][data_type]['position_specific_error_states']]
+        
+        else:
+            priors['position_specific_error_states'][data_type] = []
 
     cell_ids = sorted(set.intersection(*[set(x) for x in cell_ids]))
     
@@ -200,7 +206,7 @@ def write_genotype_posteriors(event_ids, G, out_dir):
     with gzip.GzipFile(file_name, 'w') as fh:
         G_out.to_csv(fh, index=False, sep='\t')
 
-def write_params(model, out_dir, event_ids, position_specific_error):
+def write_params(model, out_dir, event_ids):
     file_name = os.path.join(out_dir, 'params.yaml')
     
     params = {
@@ -216,15 +222,11 @@ def write_params(model, out_dir, event_ids, position_specific_error):
     params['gamma'] = {}
     
     for data_type in model.gamma:
-        if position_specific_error:
-            params['gamma'][data_type] = {}
-            
-            for m, e in enumerate(event_ids[data_type]):
-                params['gamma'][data_type][e] = [[float(x) for x in row] for row in model.gamma[data_type][:, :, m]]
+        params['gamma'][data_type] = {}
         
-        else:
-            params['gamma'][data_type] = [[float(x) for x in row] for row in model.gamma[data_type]]
-    
+        for m, e in enumerate(event_ids[data_type]):
+            params['gamma'][data_type][e] = [[float(x) for x in row] for row in model.gamma[data_type][:, :, m]]
+
     if hasattr(model, 'alpha'):
         params['alpha'] = [float(x) for x in model.alpha]
 
