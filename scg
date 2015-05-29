@@ -43,9 +43,6 @@ analysis_parser.add_argument('--labels_file', default=None,
 #---------------------------------------------------------------------------------------------------------------------- 
 genotyper_parser = argparse.ArgumentParser(add_help=False)
 
-genotyper_parser.add_argument('--use_position_specific_error_rate', action='store_true', default=False,
-                              help='''If an error rate will be estimated for each position.''')
-
 genotyper_parser.add_argument('--samples_file', default=None,
                               help='''Path mapping cells to samples. If set each sample will have a separate mixing
                               proportion.''')
