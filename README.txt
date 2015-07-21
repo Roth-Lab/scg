@@ -1,10 +1,31 @@
+# Installation
+
+The single cell genotyper is a standard Python package. It can be installed with the following command
+
+python setup.py install
+
+## Dependencies
+
+- Python >= 2.7.6
+
+- panda >= 0.16
+
+- numpy >= 1.9.2
+
+- scipy >= 0.15
+
+- PyYaml
+
+For users having difficulty installing Python or the packages required we suggest try the Miniconda (http://conda.pydata.org/miniconda.html) distribution.
+In addition the `pip` package for the Python greatly aids in the installation of packages.
+
 # Versions
 
-# 0.3.1
+## 0.3.1
 
 - Added ability to pass initial labels for cells.
 
-# 0.3.0
+## 0.3.0
 
 - Refactored code to be shared between models
 
