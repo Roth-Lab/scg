@@ -1,3 +1,8 @@
+# License
+
+The single cell genotyper code is provided under the GPLv3 license. 
+See the attached LICENSE.txt file for more information.
+
 # Installation
 
 The single cell genotyper is a standard Python package. It can be installed with the following command
