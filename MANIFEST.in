@@ -1,0 +1,6 @@
+include examples/breakpoint.tsv.gz
+include examples/config.yaml
+include examples/dmm_config.yaml
+include examples/snv.tsv.gz
+include examples/state_map.yaml
+include LICENSE.txt
