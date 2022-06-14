@@ -1,11 +1,10 @@
-'''
+"""
 Created on 2015-01-09
 
 @author: Andrew Roth
-'''
-from __future__ import division
+"""
 
-from scipy.misc import logsumexp as log_sum_exp
+from scipy.special import logsumexp as log_sum_exp
 
 import numpy as np
 import pandas as pd
@@ -13,21 +12,23 @@ import pandas as pd
 from scg.utils import compute_e_log_dirichlet, compute_e_log_p_dirichlet, compute_e_log_q_dirichlet, \
                       compute_e_log_q_discrete, get_indicator_matrix, safe_multiply
 
+
 class VariationalBayesDoubletGenotyper(object):
-    def __init__(self, 
-                 alpha_prior, 
-                 gamma_prior, 
-                 kappa_prior, 
-                 G_prior, 
-                 state_map, 
-                 X, 
-                 init_labels=None, 
-                 samples=None, 
-                 use_position_specific_gamma=False):   
+
+    def __init__(self,
+                 alpha_prior,
+                 gamma_prior,
+                 kappa_prior,
+                 G_prior,
+                 state_map,
+                 X,
+                 init_labels=None,
+                 samples=None,
+                 use_position_specific_gamma=False): 
         
         self.K = len(kappa_prior)
         
-        self.N = X[X.keys()[0]].shape[0]
+        self.N = X[list(X.keys())[0]].shape[0]
         
         if samples is None:
             self.samples = pd.Series([0] * self.N)
@@ -51,7 +52,7 @@ class VariationalBayesDoubletGenotyper(object):
         
         self.state_map = state_map
         
-        self.data_types = X.keys()
+        self.data_types = list(X.keys())
     
         self.M = {}
         
@@ -69,7 +70,7 @@ class VariationalBayesDoubletGenotyper(object):
         
         for data_type in self.data_types:
             if X[data_type].shape[0] != self.N:
-                raise Exception('All data types must have the same number of rows (cells).')
+                raise Exception("All data types must have the same number of rows (cells).")
                     
             self.M[data_type] = X[data_type].shape[1]
             
@@ -77,7 +78,7 @@ class VariationalBayesDoubletGenotyper(object):
             
             self.T[data_type] = gamma_prior[data_type].shape[1]
         
-            self.X[data_type] = get_indicator_matrix(range(self.T[data_type]), X[data_type])
+            self.X[data_type] = get_indicator_matrix(list(range(self.T[data_type])), X[data_type])
             
             self._init_gamma(data_type)
             
@@ -85,9 +86,9 @@ class VariationalBayesDoubletGenotyper(object):
             
             self._init_inverse_state_map(data_type)
         
-        self.lower_bound = [float('-inf')]
+        self.lower_bound = [float("-inf")]
 
-        self._debug_lower_bound = [float('-inf')]
+        self._debug_lower_bound = [float("-inf")]
         
         self.converged = False
     
@@ -121,14 +122,13 @@ class VariationalBayesDoubletGenotyper(object):
         for s in self.state_map[data_type]:
             for (u, v) in self.state_map[data_type][s]:
                 self._inverse_state_map[data_type][(u, v)] = s
-
     
     def get_e_log_epsilon(self, data_type):
         if self.use_position_specific_gamma:
             e_log_epsilon = np.zeros((self.gamma[data_type].shape))
         
             for m in range(self.M[data_type]):
-                e_log_epsilon[:, :, m] = compute_e_log_dirichlet(self.gamma[data_type][:, :, m])
+                e_log_epsilon[:,:, m] = compute_e_log_dirichlet(self.gamma[data_type][:,:, m])
         
         else:
             e_log_epsilon = compute_e_log_dirichlet(self.gamma[data_type])
@@ -176,7 +176,7 @@ class VariationalBayesDoubletGenotyper(object):
 
     @property
     def log_Z_0(self):
-        return self.log_Z[:, :self.K]
+        return self.log_Z[:,:self.K]
     
     @property
     def log_Z_1(self):
@@ -197,7 +197,7 @@ class VariationalBayesDoubletGenotyper(object):
             self._update_Z()
             
             if debug:
-                self._check_lower_bound_increase('Z')
+                self._check_lower_bound_increase("Z")
             
             g_old = self._compute_lower_bound()
             
@@ -208,44 +208,44 @@ class VariationalBayesDoubletGenotyper(object):
             g_diff = g_new - g_old
             
             if debug:
-                self._check_lower_bound_increase('G')
+                self._check_lower_bound_increase("G")
             
             self._update_gamma()
             
             if debug:
-                self._check_lower_bound_increase('gamma')
+                self._check_lower_bound_increase("gamma")
             
             self._update_kappa()
             
             if debug:
-                self._check_lower_bound_increase('kappa')
+                self._check_lower_bound_increase("kappa")
             
             self._update_alpha()
             
             if debug:
-                self._check_lower_bound_increase('alpha')         
+                self._check_lower_bound_increase("alpha")         
             
             self.lower_bound.append(self._compute_lower_bound())
              
             diff = (self.lower_bound[-1] - self.lower_bound[-2]) / np.abs(self.lower_bound[-1])
              
-            print i, self.lower_bound[-1], diff
+            print(i, self.lower_bound[-1], diff)
             
-            if (diff < 0) and (g_diff < 0):   
+            if (diff < 0) and (g_diff < 0): 
                 diff = diff + abs(g_diff)
                 
                 if diff > 0:
-                    print 'Update of G decreased lower bound. Ignoring this.'
+                    print("Update of G decreased lower bound. Ignoring this.")
              
             if abs(diff) < convergence_tolerance:
-                print 'Converged'
+                print("Converged")
                 
                 self.converged = True
                 
                 break
             
             elif diff < 0:
-                print 'Lower bound decreased'
+                print("Lower bound decreased")
                 
                 if not debug:
                     self.converged = False
@@ -277,21 +277,21 @@ class VariationalBayesDoubletGenotyper(object):
         
         # SxTxNxKxM
         if self.use_position_specific_gamma:
-            e_log_epsilon = e_log_epsilon[:, :, np.newaxis, np.newaxis, :]
+            e_log_epsilon = e_log_epsilon[:,:, np.newaxis, np.newaxis,:]
         
         else:
-            e_log_epsilon = e_log_epsilon[:, :, np.newaxis, np.newaxis, np.newaxis]
+            e_log_epsilon = e_log_epsilon[:,:, np.newaxis, np.newaxis, np.newaxis]
         
         # SxKxM
-        singlet_term = np.einsum('stnkm, stnkm, stnkm -> skm',
-                                 self.Z_0[np.newaxis, np.newaxis, :, :, np.newaxis],
-                                 X[np.newaxis, :, :, np.newaxis, :],
+        singlet_term = np.einsum("stnkm, stnkm, stnkm -> skm",
+                                 self.Z_0[np.newaxis, np.newaxis,:,:, np.newaxis],
+                                 X[np.newaxis,:,:, np.newaxis,:],
                                  e_log_epsilon)
         # SxTxKxM
-        doublet_diff_term_temp = np.einsum('stnklm, stnklm, stnklm -> stklm',
-                                           G[:, np.newaxis, np.newaxis, np.newaxis, :, :],
-                                           self.Z_1[np.newaxis, np.newaxis, :, :, :, np.newaxis],
-                                           X[np.newaxis, :, :, np.newaxis, np.newaxis, :])
+        doublet_diff_term_temp = np.einsum("stnklm, stnklm, stnklm -> stklm",
+                                           G[:, np.newaxis, np.newaxis, np.newaxis,:,:],
+                                           self.Z_1[np.newaxis, np.newaxis,:,:,:, np.newaxis],
+                                           X[np.newaxis,:,:, np.newaxis, np.newaxis,:])
  
         # SxTxKxM
         doublet_diff_term_temp = doublet_diff_term_temp.sum(axis=3) - np.swapaxes(np.diagonal(doublet_diff_term_temp, axis1=2, axis2=3), -2, -1)
@@ -309,20 +309,20 @@ class VariationalBayesDoubletGenotyper(object):
                         continue
                       
                     elif (u == s):
-                        doublet_diff_term[s, :, :, :] += safe_multiply(e_log_epsilon[w],
+                        doublet_diff_term[s,:,:,:] += safe_multiply(e_log_epsilon[w],
                                                                        doublet_diff_term_temp[v])
                           
-                    elif (v == s) :
-                        doublet_diff_term[s, :, :, :] += safe_multiply(e_log_epsilon[w],
+                    elif (v == s):
+                        doublet_diff_term[s,:,:,:] += safe_multiply(e_log_epsilon[w],
                                                                        doublet_diff_term_temp[u])
          
         # SxKxM
         doublet_diff_term = doublet_diff_term.sum(axis=1)
         
         # TxKxM
-        doublet_same_term_temp = np.einsum('tnkm, tnkm -> tkm',
-                                           self.Z_1_k_k[np.newaxis, :, :, np.newaxis],
-                                           X[:, :, np.newaxis, :])
+        doublet_same_term_temp = np.einsum("tnkm, tnkm -> tkm",
+                                           self.Z_1_k_k[np.newaxis,:,:, np.newaxis],
+                                           X[:,:, np.newaxis,:])
    
         # SxTxKxM
         doublet_same_term = np.zeros((S, T, self.K, M))
@@ -330,7 +330,7 @@ class VariationalBayesDoubletGenotyper(object):
         for s in state_map:
             w = inverse_state_map[(s, s)]
 
-            doublet_same_term[s, :, :, :] = e_log_epsilon[w] * np.expand_dims(doublet_same_term_temp, axis=0)
+            doublet_same_term[s,:,:,:] = e_log_epsilon[w] * np.expand_dims(doublet_same_term_temp, axis=0)
         
         # SxKxM
         doublet_same_term = doublet_same_term.sum(axis=1)        
@@ -363,11 +363,11 @@ class VariationalBayesDoubletGenotyper(object):
             
             indices = np.where(self.samples == sample)
             
-            singlet_term[indices] = e_log_pi[np.newaxis, :] + singlet_term[indices]
+            singlet_term[indices] = e_log_pi[np.newaxis,:] + singlet_term[indices]
             
-            doublet_diff_term[indices] = e_log_pi[np.newaxis, :, np.newaxis] + e_log_pi[np.newaxis, np.newaxis, :] + doublet_diff_term[indices]
+            doublet_diff_term[indices] = e_log_pi[np.newaxis,:, np.newaxis] + e_log_pi[np.newaxis, np.newaxis,:] + doublet_diff_term[indices]
             
-            doublet_same_term[indices] = 2 * e_log_pi[np.newaxis, :] + doublet_same_term[indices]
+            doublet_same_term[indices] = 2 * e_log_pi[np.newaxis,:] + doublet_same_term[indices]
         
         log_Z_1 = singlet_term
         
@@ -391,14 +391,14 @@ class VariationalBayesDoubletGenotyper(object):
                         
         # SxTxNxKxM
         if self.use_position_specific_gamma:
-            e_log_epsilon = e_log_epsilon[:, :, np.newaxis, np.newaxis, :]
+            e_log_epsilon = e_log_epsilon[:,:, np.newaxis, np.newaxis,:]
         
         else:
-            e_log_epsilon = e_log_epsilon[:, :, np.newaxis, np.newaxis, np.newaxis]
+            e_log_epsilon = e_log_epsilon[:,:, np.newaxis, np.newaxis, np.newaxis]
         
-        return np.einsum('stnkm, stnkm, stnkm -> nk',
-                         G[:, np.newaxis, np.newaxis, :, :],
-                         X[np.newaxis, :, :, np.newaxis, :],
+        return np.einsum("stnkm, stnkm, stnkm -> nk",
+                         G[:, np.newaxis, np.newaxis,:,:],
+                         X[np.newaxis,:,:, np.newaxis,:],
                          e_log_epsilon)
 
     def _get_Z_doublet_diff_term(self, data_type):
@@ -410,14 +410,14 @@ class VariationalBayesDoubletGenotyper(object):
         
         # SxTxNxKxKxM
         if self.use_position_specific_gamma:
-            e_log_epsilon = e_log_epsilon[:, :, np.newaxis, np.newaxis, np.newaxis, :]
+            e_log_epsilon = e_log_epsilon[:,:, np.newaxis, np.newaxis, np.newaxis,:]
         
         else:
-            e_log_epsilon = e_log_epsilon[:, :, np.newaxis, np.newaxis, np.newaxis, np.newaxis]
+            e_log_epsilon = e_log_epsilon[:,:, np.newaxis, np.newaxis, np.newaxis, np.newaxis]
                 
-        return np.einsum('stnklm, stnklm, stnklm -> nkl',
-                         X[np.newaxis, :, :, np.newaxis, np.newaxis, :],
-                         G_G[:, np.newaxis, np.newaxis, :, :, :],
+        return np.einsum("stnklm, stnklm, stnklm -> nkl",
+                         X[np.newaxis,:,:, np.newaxis, np.newaxis,:],
+                         G_G[:, np.newaxis, np.newaxis,:,:,:],
                          e_log_epsilon)
     
     def _get_Z_doublet_same_term(self, data_type):
@@ -429,15 +429,14 @@ class VariationalBayesDoubletGenotyper(object):
         
         # SxTxNxKxM
         if self.use_position_specific_gamma:
-            e_log_epsilon = e_log_epsilon[:, :, np.newaxis, np.newaxis, :]
+            e_log_epsilon = e_log_epsilon[:,:, np.newaxis, np.newaxis,:]
         
         else:
-            e_log_epsilon = e_log_epsilon[:, :, np.newaxis, np.newaxis, np.newaxis]
+            e_log_epsilon = e_log_epsilon[:,:, np.newaxis, np.newaxis, np.newaxis]
         
-        
-        return np.einsum('stnkm, stnkm, stnkm -> nk',
-                         X[np.newaxis, :, :, np.newaxis, :],
-                         G_G[:, np.newaxis, np.newaxis, :, :],
+        return np.einsum("stnkm, stnkm, stnkm -> nk",
+                         X[np.newaxis,:,:, np.newaxis,:],
+                         G_G[:, np.newaxis, np.newaxis,:,:],
                          e_log_epsilon)
 
     def _update_alpha(self):
@@ -452,7 +451,7 @@ class VariationalBayesDoubletGenotyper(object):
             prior = self.gamma_prior[data_type]
         
             if self.use_position_specific_gamma:
-                prior = prior[:, :, np.newaxis]
+                prior = prior[:,:, np.newaxis]
             
             self.gamma[data_type] = prior + self._get_gamma_data_term(data_type)
     
@@ -484,7 +483,7 @@ class VariationalBayesDoubletGenotyper(object):
         for data_type in self.data_types:
             if self.use_position_specific_gamma:
                 for m in range(self.M[data_type]):
-                    log_p_prior += sum([compute_e_log_p_dirichlet(x, y) for x, y in zip(self.gamma[data_type][:, :, m], self.gamma_prior[data_type])])
+                    log_p_prior += sum([compute_e_log_p_dirichlet(x, y) for x, y in zip(self.gamma[data_type][:,:, m], self.gamma_prior[data_type])])
             
             else:
                 log_p_prior += sum([compute_e_log_p_dirichlet(x, y) for x, y in zip(self.gamma[data_type], self.gamma_prior[data_type])])
@@ -501,7 +500,7 @@ class VariationalBayesDoubletGenotyper(object):
         return log_p_prior + log_p_posterior
     
     def _compute_log_p_kappa(self):
-        log_p_prior = sum([compute_e_log_p_dirichlet(x, self.kappa_prior) for x in self.kappa.values()])
+        log_p_prior = sum([compute_e_log_p_dirichlet(x, self.kappa_prior) for x in list(self.kappa.values())])
         
         log_p_posterior = self._compute_e_log_p_kappa_posterior()
         
@@ -518,8 +517,8 @@ class VariationalBayesDoubletGenotyper(object):
         if self.use_position_specific_gamma:
             result = 0
             
-            for m in range(self.M[data_type]):    
-                result += np.sum(safe_multiply(e_log_epsilon[:, :, m], data_term[:, :, m]))
+            for m in range(self.M[data_type]): 
+                result += np.sum(safe_multiply(e_log_epsilon[:,:, m], data_term[:,:, m]))
         
         else:
             result = np.sum(safe_multiply(e_log_epsilon, data_term))
@@ -545,7 +544,7 @@ class VariationalBayesDoubletGenotyper(object):
         for data_type in self.data_types:
             if self.use_position_specific_gamma:
                 for m in range(self.M[data_type]):
-                    log_q_epsilon += sum([compute_e_log_q_dirichlet(x)  for x in self.gamma[data_type][:, :, m]])
+                    log_q_epsilon += sum([compute_e_log_q_dirichlet(x)  for x in self.gamma[data_type][:,:, m]])
         
             else:
                 log_q_epsilon += sum([compute_e_log_q_dirichlet(x) for x in self.gamma[data_type]])
@@ -578,7 +577,7 @@ class VariationalBayesDoubletGenotyper(object):
 
         for s in state_map:
             for (u, v) in state_map[s]:
-                g_g[s, :, :, :] = g_g[s, :, :, :] + np.exp(log_G[u, :, np.newaxis, :] + log_G[v, np.newaxis, :, :])
+                g_g[s,:,:,:] = g_g[s,:,:,:] + np.exp(log_G[u,:, np.newaxis,:] + log_G[v, np.newaxis,:,:])
         
         return g_g
     
@@ -598,7 +597,7 @@ class VariationalBayesDoubletGenotyper(object):
                 if u != v:
                     continue
                 
-                g_marginal[s, :, :] += G[u, :, :]
+                g_marginal[s,:,:] += G[u,:,:]
         
         return g_marginal
     
@@ -619,33 +618,33 @@ class VariationalBayesDoubletGenotyper(object):
         state_map = self.state_map[data_type]
         
         if self.use_position_specific_gamma:
-            out_dim = 'stm'
+            out_dim = "stm"
         
         else:
-            out_dim = 'st'
+            out_dim = "st"
         
         # SxNxKxM
-        singlet_term = np.exp(self.log_Z_0[np.newaxis, :, :, np.newaxis] + log_G[:, np.newaxis, :, :])
+        singlet_term = np.exp(self.log_Z_0[np.newaxis,:,:, np.newaxis] + log_G[:, np.newaxis,:,:])
         
-        singlet_term = np.einsum('stnkm, stnkm -> {0}'.format(out_dim),
-                                 singlet_term[:, np.newaxis, :, :, :],
-                                 X[np.newaxis, :, :, np.newaxis, :])
+        singlet_term = np.einsum("stnkm, stnkm -> {0}".format(out_dim),
+                                 singlet_term[:, np.newaxis,:,:,:],
+                                 X[np.newaxis,:,:, np.newaxis,:])
         
         # TxKxKxM
-        doublet_diff_term_temp = np.einsum('tnklm, tnklm -> tklm',
-                                           self.Z_1[np.newaxis, :, :, :, np.newaxis],
-                                           X[:, :, np.newaxis, np.newaxis, :])
+        doublet_diff_term_temp = np.einsum("tnklm, tnklm -> tklm",
+                                           self.Z_1[np.newaxis,:,:,:, np.newaxis],
+                                           X[:,:, np.newaxis, np.newaxis,:])
         
         # SxKxKxM
         G_G = self._get_G_G_marginalised(data_type)
         
-        doublet_diff_term = np.einsum('stklm, stklm -> {0}'.format(out_dim),
-                                      doublet_diff_term_temp[np.newaxis, :, :, :],
-                                      G_G[:, np.newaxis, :, :, :])
+        doublet_diff_term = np.einsum("stklm, stklm -> {0}".format(out_dim),
+                                      doublet_diff_term_temp[np.newaxis,:,:,:],
+                                      G_G[:, np.newaxis,:,:,:])
         
-        doublet_diff_term_correction = np.einsum('stmk, stmk -> {0}'.format(out_dim),
-                                                 np.diagonal(doublet_diff_term_temp, axis1=1, axis2=2)[np.newaxis, :, :, :],
-                                                 np.diagonal(G_G, axis1=1, axis2=2)[:, np.newaxis, :, :])
+        doublet_diff_term_correction = np.einsum("stmk, stmk -> {0}".format(out_dim),
+                                                 np.diagonal(doublet_diff_term_temp, axis1=1, axis2=2)[np.newaxis,:,:,:],
+                                                 np.diagonal(G_G, axis1=1, axis2=2)[:, np.newaxis,:,:])
         
         doublet_diff_term = doublet_diff_term - doublet_diff_term_correction
      
@@ -657,16 +656,15 @@ class VariationalBayesDoubletGenotyper(object):
                 if u != v:
                     continue
                 
-                doublet_same_term[s, :, :] += G[u, :, :]
+                doublet_same_term[s,:,:] += G[u,:,:]
         
         # SxNxKxM
-        doublet_same_term = safe_multiply(doublet_same_term[:, np.newaxis, :, :], self.Z_1_k_k[np.newaxis, :, :, np.newaxis])
+        doublet_same_term = safe_multiply(doublet_same_term[:, np.newaxis,:,:], self.Z_1_k_k[np.newaxis,:,:, np.newaxis])
         
         # SxT
-        doublet_same_term = np.einsum('stnkm, stnkm -> {0}'.format(out_dim),
-                                      doublet_same_term[:, np.newaxis, :, :, :],
-                                      X[np.newaxis, :, :, np.newaxis, :])
-        
+        doublet_same_term = np.einsum("stnkm, stnkm -> {0}".format(out_dim),
+                                      doublet_same_term[:, np.newaxis,:,:,:],
+                                      X[np.newaxis,:,:, np.newaxis,:])
 
         # SxT
         return singlet_term + doublet_same_term + doublet_diff_term
@@ -685,47 +683,57 @@ class VariationalBayesDoubletGenotyper(object):
         
         diff = (self._debug_lower_bound[-1] - self._debug_lower_bound[-2]) / np.abs(self._debug_lower_bound[-1])
         
-        if diff < 0:                
-            print 'Bound decreased by {0} when updating {1}.'.format(diff, variable)
+        if diff < 0: 
+            print("Bound decreased by {0} when updating {1}.".format(diff, variable))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+
     def test_run(samples, use_position_specific_gamma):
         np.random.seed(0)
     
-        model = VariationalBayesDoubletGenotyper(alpha_prior, 
-                                                 gamma_prior, 
-                                                 kappa_prior, 
-                                                 G_prior, 
-                                                 state_map, 
-                                                 sim['X'],
+        model = VariationalBayesDoubletGenotyper(alpha_prior,
+                                                 gamma_prior,
+                                                 kappa_prior,
+                                                 G_prior,
+                                                 state_map,
+                                                 sim["X"],
                                                  samples=samples,
                                                  use_position_specific_gamma=use_position_specific_gamma)
  
         model.fit(debug=False, num_iters=100)
         
-        print model.gamma['snv'].shape, model.kappa.keys()
+        print(model.gamma["snv"].shape, list(model.kappa.keys()))
     
-    from simulate import get_default_dirichlet_mixture_sim
+    from .simulate import get_default_dirichlet_mixture_sim
     
-    np.seterr(all='warn')
+    np.seterr(all="warn")
 
     state_map = {
-                 'snv' : {0 : [(0, 0)],
-                          1 : [(0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1)],
-                          2 : [(2, 2)]},
-                 'breakpoint' : {0 : [(0, 0)],
-                                 1 : [(0, 1), (1, 0), (1, 1)]}
-                 }
+        "snv": {
+            0: [(0, 0)],
+            1: [(0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1)],
+            2: [(2, 2)]
+        },
+        "breakpoint": {
+            0: [(0, 0)],
+            1: [(0, 1), (1, 0), (1, 1)]
+        }
+    }
 
     alpha_prior = np.array([10, 1])
     
     gamma_prior = {
-                   'snv' : np.array([[98, 1, 1],
-                                     [25, 50, 25],
-                                     [1, 1, 98]]),
-                   'breakpoint' : np.array([[90, 10],
-                                            [1, 99]])}
+        "snv": np.array([
+            [98, 1, 1],
+            [25, 50, 25],
+            [1, 1, 98]
+        ]),
+        "breakpoint": np.array([
+            [90, 10],
+            [1, 99]
+        ])
+    }
     
     kappa_prior = np.ones(20)
     
@@ -740,20 +748,20 @@ if __name__ == '__main__':
     
     sim = get_default_dirichlet_mixture_sim()
     
-    samples = pd.Series(['a' for _ in range(30)] + ['b' for _ in range(70)])
+    samples = pd.Series(["a" for _ in range(30)] + ["b" for _ in range(70)])
     
-    print 'Standard'
+    print("Standard")
     
     test_run(None, False)
     
-    print 'Position specific'
+    print("Position specific")
     
     test_run(None, True)
     
-    print 'Sample specific'
+    print("Sample specific")
     
     test_run(samples, False)
     
-    print 'Sample position specific'
+    print("Sample position specific")
     
     test_run(samples, True)

@@ -1,12 +1,13 @@
-'''
+"""
 Created on 2015-01-10
 
 @author: Andrew Roth
-'''
+"""
 import numpy as np
 
+
 def simulate_dirichlet_mixture_model_data(gamma_true, kappa_true, M, N):
-    data_types = M.keys()
+    data_types = list(M.keys())
     
     K = len(kappa_true)
     
@@ -24,7 +25,7 @@ def simulate_dirichlet_mixture_model_data(gamma_true, kappa_true, M, N):
         
         mu_true[data_type] = np.swapaxes(mu_d.T, axis1=1, axis2=2)
         
-    print mu_true['snv'].shape, mu_true['breakpoint'].shape
+    print(mu_true["snv"].shape, mu_true["breakpoint"].shape)
 
     Z_true = np.random.multinomial(1, pi_true, size=N).argmax(axis=1)
 
@@ -42,10 +43,11 @@ def simulate_dirichlet_mixture_model_data(gamma_true, kappa_true, M, N):
     
         data[data_type] = np.array(X)
     
-    return {'mu' : mu_true, 'pi' : pi_true, 'X' : data, 'Z' : Z_true}
+    return {"mu": mu_true, "pi": pi_true, "X": data, "Z": Z_true}
+
 
 def simualte_genotyper_data(alpha_true, gamma_true, kappa_true, G_prior, M, N, inverse_state_map):
-    data_types = G_prior.keys()
+    data_types = list(G_prior.keys())
     
     K = len(kappa_true)
     
@@ -65,8 +67,13 @@ def simualte_genotyper_data(alpha_true, gamma_true, kappa_true, G_prior, M, N, i
 
     Y_true = np.random.multinomial(1, d_true, size=N).argmax(axis=1)
 
-    Z_true = [np.random.multinomial(1, pi_true, size=N).argmax(axis=1),
-              zip(np.random.multinomial(1, pi_true, size=N).argmax(axis=1), np.random.multinomial(1, pi_true, size=N).argmax(axis=1))]
+    Z_true = [
+        np.random.multinomial(1, pi_true, size=N).argmax(axis=1),
+        list(zip(
+            np.random.multinomial(1, pi_true, size=N).argmax(axis=1),
+            np.random.multinomial(1, pi_true, size=N).argmax(axis=1)
+        ))
+    ]
 
     data = {}
     
@@ -88,40 +95,42 @@ def simualte_genotyper_data(alpha_true, gamma_true, kappa_true, G_prior, M, N, i
                 x_n = []
     
                 for u, v in zip(x[0], x[1]):
-                    x_n.append(inverse_state_map[data_type][(u,v)])
+                    x_n.append(inverse_state_map[data_type][(u, v)])
     
                 X.append(x_n)
     
         data[data_type] = np.array(X)
     
-    return {'d' : d_true, 'e' : e_true, 'pi' : pi_true, 'G' : G_true, 'X' : data, 'Y' : Y_true, 'Z' : Z_true}
+    return {"d": d_true, "e": e_true, "pi": pi_true, "G": G_true, "X": data, "Y": Y_true, "Z": Z_true}
+
 
 def get_default_dirichlet_mixture_sim():
     N = 100
     
     K_true = 4
     
-    M = {'snv' : 48, 'breakpoint' : 8}
+    M = {"snv": 48, "breakpoint": 8}
     
-    gamma_prior = {'snv' : np.ones(3), 'breakpoint' : np.ones(2)}
+    gamma_prior = {"snv": np.ones(3), "breakpoint": np.ones(2)}
     
     kappa_prior = np.ones(K_true)
     
     return simulate_dirichlet_mixture_model_data(gamma_prior, kappa_prior, M, N)
+
 
 def get_default_genotyper_sim():
     N = 100
     
     K_true = 4
     
-    M = {'snv' : 48, 'breakpoint' : 8}
+    M = {"snv": 48, "breakpoint": 8}
     
     state_map = {
-                 'snv' : {0 : [(0, 0)],
-                          1 : [(0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1)],
-                          2 : [(2, 2)]},
-                 'breakpoint' : {0 : [(0, 0)],
-                                 1 : [(0, 1), (1, 0), (1, 1)]}
+                 "snv": {0: [(0, 0)],
+                          1: [(0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1)],
+                          2: [(2, 2)]},
+                 "breakpoint": {0: [(0, 0)],
+                                 1: [(0, 1), (1, 0), (1, 1)]}
                  }
     
     inverse_state_map = {}
@@ -132,16 +141,20 @@ def get_default_genotyper_sim():
         for s in state_map[data_type]:
             for (u, v) in state_map[data_type][s]:
                 inverse_state_map[data_type][(u, v)] = s
-    
 
     alpha_prior = np.array([10, 1])
     
     gamma_prior = {
-                   'snv' : np.array([[98, 1, 1],
-                                     [25, 50, 25],
-                                     [1, 1, 98]]),
-                   'breakpoint' : np.array([[90, 10],
-                                            [1, 99]])}
+        "snv": np.array([
+            [98, 1, 1],
+            [25, 50, 25],
+            [1, 1, 98]
+        ]),
+        "breakpoint": np.array([
+            [90, 10],
+            [1, 99]
+        ])
+    }
     
     kappa_prior = np.ones(K_true)
     
@@ -152,11 +165,12 @@ def get_default_genotyper_sim():
         
         G_prior[data_type] = np.ones(S) * 1 / S
         
-        
-    return simualte_genotyper_data(alpha_prior,
-                                   gamma_prior,
-                                   kappa_prior,
-                                   G_prior,
-                                   M,
-                                   N,
-                                   inverse_state_map)
+    return simualte_genotyper_data(
+        alpha_prior,
+        gamma_prior,
+        kappa_prior,
+        G_prior,
+        M,
+        N,
+        inverse_state_map
+    )

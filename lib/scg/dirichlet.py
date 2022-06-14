@@ -1,17 +1,18 @@
-'''
+"""
 Created on 2015-02-03
 
 @author: aroth
-'''
-from __future__ import division
+"""
 
 import numpy as np
 
 from scg.utils import compute_e_log_dirichlet, compute_e_log_q_dirichlet, compute_e_log_p_dirichlet, \
                       compute_e_log_q_discrete, get_indicator_matrix, init_Z, log_space_normalise, safe_multiply
 
+
 class VariationalBayesDirichletMixtureModel(object):
-    def __init__(self, gamma_prior, kappa_prior, X, init_labels=None):    
+
+    def __init__(self, gamma_prior, kappa_prior, X, init_labels=None): 
         self.K = len(kappa_prior)
         
         self.gamma_prior = gamma_prior
@@ -20,9 +21,9 @@ class VariationalBayesDirichletMixtureModel(object):
             
         self.kappa = np.ones(self.K)
         
-        self.data_types = X.keys()
+        self.data_types = list(X.keys())
     
-        self.N = X[X.keys()[0]].shape[0]
+        self.N = X[list(X.keys())[0]].shape[0]
         
         self.M = {}
         
@@ -34,19 +35,19 @@ class VariationalBayesDirichletMixtureModel(object):
         
         for data_type in self.data_types:
             if X[data_type].shape[0] != self.N:
-                raise Exception('All data types must have the same number of rows (cells).')
+                raise Exception("All data types must have the same number of rows (cells).")
                     
             self.M[data_type] = X[data_type].shape[1]
             
             self.T[data_type] = len(gamma_prior[data_type])
         
-            self.X[data_type] = get_indicator_matrix(range(self.T[data_type]), X[data_type])
+            self.X[data_type] = get_indicator_matrix(list(range(self.T[data_type])), X[data_type])
 
         self.log_Z = init_Z(self.K, self.N, init_labels)
         
-        self.lower_bound = [float('-inf')]
+        self.lower_bound = [float("-inf")]
 
-        self._debug_lower_bound = [float('-inf')]
+        self._debug_lower_bound = [float("-inf")]
         
         self.converged = False
 
@@ -73,33 +74,33 @@ class VariationalBayesDirichletMixtureModel(object):
             self._update_gamma()
             
             if debug:
-                print 'gamma', self._diff_lower_bound()
+                print("gamma", self._diff_lower_bound())
             
             self._update_kappa()
             
             if debug:
-                print 'kappa', self._diff_lower_bound()
+                print("kappa", self._diff_lower_bound())
 
             self._update_Z()
             
             if debug:
-                print 'Z', self._diff_lower_bound()
+                print("Z", self._diff_lower_bound())
             
             self.lower_bound.append(self._compute_lower_bound())
              
             diff = (self.lower_bound[-1] - self.lower_bound[-2]) / np.abs(self.lower_bound[-1])
              
-            print i, self.lower_bound[-1], diff
+            print(i, self.lower_bound[-1], diff)
             
             if abs(diff) < convergence_tolerance:
-                print 'Converged'
+                print("Converged")
                 
                 self.converged = True
                 
                 break
             
             elif diff < 0:
-                print 'Lower bound decreased'
+                print("Lower bound decreased")
                 
                 if not debug:
                     self.converged = False
@@ -107,7 +108,7 @@ class VariationalBayesDirichletMixtureModel(object):
                     break
     
     def _update_Z(self):
-        log_Z = self.e_log_pi[np.newaxis, :]
+        log_Z = self.e_log_pi[np.newaxis,:]
         
         for data_type in self.data_types:
             log_Z = log_Z + self._get_log_Z_d(data_type)
@@ -119,9 +120,9 @@ class VariationalBayesDirichletMixtureModel(object):
    
         X = self.X[data_type]
         
-        log_Z = np.einsum('tnkm, tnkm -> nk',
-                          e_log_mu[:, np.newaxis, :, :],
-                          X[:, :, np.newaxis, :])
+        log_Z = np.einsum("tnkm, tnkm -> nk",
+                          e_log_mu[:, np.newaxis,:,:],
+                          X[:,:, np.newaxis,:])
       
         return log_Z
     
@@ -182,9 +183,9 @@ class VariationalBayesDirichletMixtureModel(object):
     def _get_gamma_data_term(self, data_type):
         X = self.X[data_type]
         
-        return np.einsum('tnkm, tnkm -> tkm',
-                         self.Z[np.newaxis, :, :, np.newaxis],
-                         X[:, :, np.newaxis, :])
+        return np.einsum("tnkm, tnkm -> tkm",
+                         self.Z[np.newaxis,:,:, np.newaxis],
+                         X[:,:, np.newaxis,:])
     
     def _get_kappa_data_term(self):
         return self.Z.sum(axis=0)
@@ -195,18 +196,19 @@ class VariationalBayesDirichletMixtureModel(object):
         diff = (self._debug_lower_bound[-1] - self._debug_lower_bound[-2]) / np.abs(self._debug_lower_bound[-1])
         
         if diff < 0:
-            print 'Bound decreased',
+            print("Bound decreased", end=" ")
         
         return diff
+
     
-if __name__ == '__main__':
+if __name__ == "__main__":
     from sklearn.metrics import v_measure_score
     
-    from simulate import get_default_dirichlet_mixture_sim, get_default_genotyper_sim
+    from .simulate import get_default_dirichlet_mixture_sim, get_default_genotyper_sim
     
     kappa_prior = np.ones(20)
     
-    gamma_prior = {'snv' : np.ones(3), 'breakpoint' : np.ones(2)}
+    gamma_prior = {"snv": np.ones(3), "breakpoint": np.ones(2)}
     
     np.random.seed(0)
     
@@ -217,13 +219,13 @@ if __name__ == '__main__':
     for i in range(10):
         np.random.seed(i)
         
-        model = VariationalBayesDirichletMixtureModel(gamma_prior, kappa_prior, sim['X'])
+        model = VariationalBayesDirichletMixtureModel(gamma_prior, kappa_prior, sim["X"])
      
         model.fit(num_iters=100)
      
         Z = model.Z.argmax(axis=1)
         
-        v_dmm.append(v_measure_score(sim['Z'], Z))    
+        v_dmm.append(v_measure_score(sim["Z"], Z))    
     
     np.random.seed(0)
     
@@ -234,12 +236,12 @@ if __name__ == '__main__':
     for i in range(10):
         np.random.seed(i)
         
-        model = VariationalBayesDirichletMixtureModel(gamma_prior, kappa_prior, sim['X'])
+        model = VariationalBayesDirichletMixtureModel(gamma_prior, kappa_prior, sim["X"])
      
         model.fit(num_iters=100)
      
         Z = model.Z.argmax(axis=1)
         
-        v_gen.append(v_measure_score(sim['Z'][0][sim['Y'] == 0], Z[sim['Y'] == 0]))
+        v_gen.append(v_measure_score(sim["Z"][0][sim["Y"] == 0], Z[sim["Y"] == 0]))
          
-    print max(v_dmm), max(v_gen)
+    print(max(v_dmm), max(v_gen))
