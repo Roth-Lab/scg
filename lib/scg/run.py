@@ -6,11 +6,14 @@ Created on 2015-01-23
 
 import h5py
 import numpy as np
+import os
 import pandas as pd
 import yaml
 
 from scg.doublet import VariationalBayesDoubletGenotyper
 from scg.singlet import VariationalBayesSingletGenotyper
+
+import scg.post_process
 
 
 def fit(
@@ -59,6 +62,16 @@ def fit(
     model.fit(convergence_threshold=convergence_threshold, num_iters=max_iters)
 
     with h5py.File(out_file, "w") as fh:
+        meta = fh.create_group("meta")
+        
+#         meta.attrs["data_types"] = config.data_types
+        
+        meta.attrs["model"] = config.model
+        
+        meta.attrs["K"] = model.K
+        
+        meta.attrs["N"] = model.N
+        
         # Save data info
         fh.create_dataset(
             "/data/cell_ids",
@@ -97,6 +110,8 @@ def fit(
             fh.create_dataset("/var_params/kappa/{}".format(sample), data=model.kappa[sample])
         
         for data_type in config.data_types:
+            fh.create_dataset("/var_params/G/{}".format(data_type), data=model.G[data_type])
+            
             if config.use_position_specific_errors:
                 for m, e in enumerate(config.event_ids[data_type]):
                     fh.create_dataset(
@@ -201,92 +216,14 @@ class FitConfig(object):
             
         self.samples = samples
 
-# def write_cluster_posteriors(cell_ids, Z, out_dir):
-#     file_name = os.path.join(out_dir, "cluster_posteriors.tsv.gz")
-# 
-#     df = pd.DataFrame(Z, index=cell_ids)
-#     
-#     with gzip.GzipFile(file_name, "w") as fh:
-#         df.to_csv(fh, index_label="cell_id", sep="\t")
-# 
-# 
-# def write_doublet_posteriors(cell_ids, model, out_dir):
-#     file_name = os.path.join(out_dir, "doublet_posteriors.tsv.gz")
-#     
-#     df = pd.DataFrame(model.Y.T, index=cell_ids)
-#     
-#     with gzip.GzipFile(file_name, "w") as fh:
-#         df.to_csv(fh, index_label="cell_id", sep="\t")
-# 
-# 
-# def write_double_cluster_posteriors(cell_ids, model, out_dir):
-#     file_name = os.path.join(out_dir, "double_cluster_posteriors.tsv.gz")
-#     
-#     df = pd.DataFrame(model.Z_1.reshape(model.N, model.K * model.K), index=cell_ids)
-#     
-#     with gzip.GzipFile(file_name, "w") as fh:
-#         df.to_csv(fh, index_label="cell_id", sep="\t")    
-# 
-# 
-# def write_genotype_posteriors(event_ids, G, out_dir):
-#     file_name = os.path.join(out_dir, "genotype_posteriors.tsv.gz")
-#     
-#     G_out = []
-#     
-#     for data_type in event_ids:
-#         for i, df in enumerate(G[data_type]):
-#             df = pd.DataFrame(df, columns=event_ids[data_type])
-#             
-#             df = df.stack().reset_index()
-#             
-#             df.columns = "cluster_id", "event_id", "probability"
-#             
-#             df.insert(1, "event_type", data_type)
-#             
-#             df.insert(3, "event_value", i)
-#             
-#             G_out.append(df)
-#     
-#     G_out = pd.concat(G_out)
-#   
-#     with gzip.GzipFile(file_name, "w") as fh:
-#         G_out.to_csv(fh, index=False, sep="\t")
-# 
-# 
-# def write_params(model, out_dir, event_ids, position_specific_error):
-#     file_name = os.path.join(out_dir, "params.yaml")
-#     
-#     params = {
-#               "lower_bound": float(model.lower_bound[-1]),
-#               "converged": model.converged
-#               }
-#     
-#     params["kappa"] = {}
-#     
-#     for sample in model.kappa:
-#         params["kappa"][str(sample)] = [float(x) for x in model.kappa[sample]]
-#     
-#     params["gamma"] = {}
-#     
-#     for data_type in model.gamma:
-#         if position_specific_error:
-#             params["gamma"][data_type] = {}
-#             
-#             for m, e in enumerate(event_ids[data_type]):
-#                 params["gamma"][data_type][e] = [[float(x) for x in row] for row in model.gamma[data_type][:,:, m]]
-#         
-#         else:
-#             params["gamma"][data_type] = [[float(x) for x in row] for row in model.gamma[data_type]]
-#     
-#     if hasattr(model, "alpha"):
-#         params["alpha"] = [float(x) for x in model.alpha]
-# 
-#     with open(file_name, "w") as fh:
-#         yaml.dump(params, fh, default_flow_style=False)
-# 
-#         
-# def write_lower_bound(model, out_file):
-#     with open(out_file, "w") as fh:
-#         result = {"lower_bound": float(model.lower_bound[-1]), "converged": model.converged}
-#         
-#         yaml.dump(result, fh, default_flow_style=False)
+
+def write_results_tsv(in_file, out_dir):
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    
+    cell_df, cluster_df = scg.post_process.load_results_dfs(in_file)
+
+    cell_df.to_csv(os.path.join(out_dir, "cells.tsv.gz"), compression='gzip', float_format='%.4f', index=False, sep='\t')
+    
+    cluster_df.to_csv(os.path.join(out_dir, "clusters.tsv.gz"), compression='gzip', float_format='%.4f', index=False, sep='\t')
+
