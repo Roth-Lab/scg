@@ -1,9 +1,3 @@
-"""
-Created on 2015-01-09
-
-@author: Andrew Roth
-"""
-
 from scipy.special import logsumexp as log_sum_exp
 
 import numpy as np
@@ -22,7 +16,6 @@ class VariationalBayesDoubletGenotyper(object):
                  G_prior,
                  state_map,
                  X,
-                 init_labels=None,
                  samples=None,
                  use_position_specific_gamma=False): 
         
@@ -191,7 +184,7 @@ class VariationalBayesDoubletGenotyper(object):
         return np.vstack((log_sum_exp(self.log_Z_0, axis=1),
                           log_sum_exp(self.log_Z_1.reshape(self.N, self.K * self.K), axis=1)))
     
-    def fit(self, convergence_tolerance=1e-4, debug=False, num_iters=100):
+    def fit(self, convergence_threshold=1e-4, debug=False, num_iters=100):
         for i in range(num_iters):
             
             self._update_Z()
@@ -237,7 +230,7 @@ class VariationalBayesDoubletGenotyper(object):
                 if diff > 0:
                     print("Update of G decreased lower bound. Ignoring this.")
              
-            if abs(diff) < convergence_tolerance:
+            if abs(diff) < convergence_threshold:
                 print("Converged")
                 
                 self.converged = True
@@ -705,7 +698,7 @@ if __name__ == "__main__":
         
         print(model.gamma["snv"].shape, list(model.kappa.keys()))
     
-    from .simulate import get_default_dirichlet_mixture_sim
+    from scg.simulate import get_default_dirichlet_mixture_sim
     
     np.seterr(all="warn")
 

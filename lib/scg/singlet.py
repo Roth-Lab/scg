@@ -1,10 +1,8 @@
-
-
 import numpy as np
 import pandas as pd
 
 from scg.utils import compute_e_log_dirichlet, compute_e_log_q_dirichlet, compute_e_log_p_dirichlet, \
-                      compute_e_log_q_discrete, get_indicator_matrix, init_Z, log_space_normalise, safe_multiply
+                      compute_e_log_q_discrete, get_indicator_matrix, log_space_normalise, safe_multiply
 
 
 class VariationalBayesSingletGenotyper(object):
@@ -14,7 +12,6 @@ class VariationalBayesSingletGenotyper(object):
                  kappa_prior,
                  G_prior,
                  X,
-                 init_labels=None,
                  samples=None,
                  use_position_specific_gamma=False):
         
@@ -65,8 +62,8 @@ class VariationalBayesSingletGenotyper(object):
             self.X[data_type] = get_indicator_matrix(list(range(self.T[data_type])), X[data_type])
             
             self._init_gamma(data_type)
-        
-        self.log_Z = init_Z(self.K, self.N, init_labels)
+            
+            self._init_G(data_type)
         
         self.lower_bound = [float("-inf")]
 
@@ -90,6 +87,13 @@ class VariationalBayesSingletGenotyper(object):
         
         for sample in self.samples:
             self.kappa[sample] = np.ones(self.K)
+    
+    def _init_G(self, data_type):
+        G = np.random.random((self.S[data_type], self.K, self.M[data_type]))
+        
+        G = G / np.expand_dims(G.sum(axis=0), axis=0)
+        
+        self.log_G[data_type] = np.log(G)
     
     def get_e_log_epsilon(self, data_type):
         if self.use_position_specific_gamma:
@@ -122,9 +126,14 @@ class VariationalBayesSingletGenotyper(object):
     def Z(self):
         return np.exp(self.log_Z)
     
-    def fit(self, convergence_tolerance=1e-4, debug=False, num_iters=100):
+    def fit(self, convergence_threshold=1e-4, debug=False, num_iters=100):
         for i in range(num_iters):
-
+            
+            self._update_Z()
+            
+            if debug:
+                print("Z", self._diff_lower_bound())
+                
             self._update_G()
             
             if debug:
@@ -140,18 +149,13 @@ class VariationalBayesSingletGenotyper(object):
             if debug:
                 print("kappa", self._diff_lower_bound())
             
-            self._update_Z()
-            
-            if debug:
-                print("Z", self._diff_lower_bound())
-            
             self.lower_bound.append(self._compute_lower_bound())
              
             diff = (self.lower_bound[-1] - self.lower_bound[-2]) / np.abs(self.lower_bound[-1])
              
             print(i, self.lower_bound[-1], diff)
              
-            if abs(diff) < convergence_tolerance:
+            if abs(diff) < convergence_threshold:
                 print("Converged")
                 
                 self.converged = True
@@ -393,7 +397,7 @@ if __name__ == "__main__":
         
         print(model.gamma["snv"].shape, list(model.kappa.keys()))
     
-    from .simulate import get_default_genotyper_sim
+    from scg.simulate import get_default_genotyper_sim
     
     np.seterr(all="warn")
     
